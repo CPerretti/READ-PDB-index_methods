@@ -47,11 +47,13 @@ obj_wfloors <- MakeADFun(dat_wfloors,
                  DLL = "yt_rw", 
                  random = c("logB"), 
                  silent = TRUE)
+
 opt_wfloors <- nlminb(obj_wfloors$par, 
                       obj_wfloors$fn, 
                       obj_wfloors$gr, 
                       control = list(iter.max = 1000,
                                      eval.max = 1000))
+
 srep_wfloors <- summary(sdreport(obj_wfloors))
 
 # Fit no floors model
@@ -60,11 +62,13 @@ obj_nofloors <- MakeADFun(dat_nofloors,
                           DLL = "yt_rw", 
                           random = c("logB"), 
                           silent = TRUE)
+
 opt_nofloors <- nlminb(obj_nofloors$par, 
                        obj_nofloors$fn, 
                        obj_nofloors$gr, 
                        control = list(iter.max = 1000,
                                       eval.max = 1000))
+
 srep_nofloors <- summary(sdreport(obj_nofloors))
 
 

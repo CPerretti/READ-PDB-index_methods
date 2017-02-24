@@ -1,13 +1,11 @@
 # Make plots of model fits:
 source("4-run_models.R")
 
-library(ggplot2) # for plots
-
 
 
 ## Fit MARSS model ----------------------------------------
 # dat_yt2marss <-
-#   df_yt %>%
+#   df_yt %>% 
 #   dplyr::filter(Survey != "Average") %>%
 #   dplyr::select(Year, Survey, log_biomass) %>%
 #   tidyr::spread(Survey, log_biomass) %>%
