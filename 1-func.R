@@ -6,6 +6,7 @@ library(ggplot2)
 ggplot <- function(...) ggplot2::ggplot(...) + theme_bw()
 
 
+
 ## Extract estimates from TMB output ----------------------
 return_ests <- function(srep) {
   est.log.pop <- srep[rownames(srep) == "logB",]
@@ -25,126 +26,130 @@ return_ests <- function(srep) {
                est.obs.error.spring = est.obs.error.spring)
 }
 
+
 ## Run the population simulation --------------------------
-run_sim <- function(maxT, 
-                    n_seas, 
-                    seas_ratio, 
-                    noise){
-    # Simulation parameters:
-    n_ages <- 4                # Number of ages.
+run_sim <- function(n_ages,
+                    n_surveys,
+                    sd_multiplier,
+                    n_burn,
+                    n_sim,
+                    return_burn = FALSE){
     
-    year <- rep(1:maxT, each = n_seas) # Year index.
+    n_t <- n_burn + n_sim
+      
     # Pre-allocate matrices:
-    N      <- matrix(data = NA, # Abundance.
-                     nrow = maxT,
-                     ncol = n_ages)
-    C      <- matrix(data = NA, # Catch-at-age.
-                     nrow = maxT,
-                     ncol = n_ages)
-    B      <- matrix(data = NA, # Biomass.
-                     nrow = maxT,
+   abund_tru <- matrix(data = NA, # Abundance
+                       nrow = n_t,
+                       ncol = n_ages,
+                       dimnames = list(NULL, 
+                                       paste0("age", 1:n_ages)))
+    C      <- matrix(data = NA, # Catch-at-age
+                     nrow = n_t,
+                     ncol = n_ages,
+                     dimnames = list(NULL, 
+                                     paste0("age", 1:n_ages)))
+    SSB    <- matrix(data = NA, # Spawning stock biomass
+                     nrow = n_t,
                      ncol = 1)
-    E      <- matrix(data = NA, # Eggs.
-                     nrow = maxT,
-                     ncol = 1)
-    v_a    <- seq(from = 0,     # Vulnerabilities. 
-                  to   = 1,
-                  length.out = n_ages)
-    w_a    <- seq(from = 10,    # Weights.
-                  to   = 1000,
-                  length.out = n_ages)  
-    s_a    <- matrix(data = 0,  # Survivals.
-                     nrow = n_ages-1, 
-                     ncol = n_ages-1)
     
     # Model parameters:
-    diag(s_a) <- (1 - 0.2)     # 1 - mortality.
-    e_a    <- seq(from = 0,    # Fecundities. 
-                  to   = 1000,
-                  length.out = n_ages)
-    a      <- 5.0              # S-R parameter.
-    b      <- 0.1              # S-R parameter.
-    sdR    <- 0.1              # SD of the process error.
-    sdO    <- 0.2
-    #sdO_high <- 1.02           # SD of high observation error.
- 
-    #if(noise=="low"){          # SD of observation error.
-    #  sdO  <- 0.25 * sdO_high            
-    #} else if(noise=="med"){
-    #  sdO <- 0.50 * sdO_high
-    #} else if(noise=="high"){
-    #  sdO <- sdO_high
-    #}
+    w_a    <- c(0.148, 0.317, 0.453, 0.588, 0.724, 
+                rep(0.921, times = n_ages - 5)) # Weights
+    mat_a  <- c(0, 0.462, 0.967, # Maturity
+                 rep(1, times = n_ages - 3)) 
+    m      <- 0.4 # Natural mortality
+    phi    <- 0.4167 # Fraction of year before spawning
     
-      f      <- c(seq(from = 0.9,   # Trend scenario.
-                      to   = 0.3,
-                      length.out = ceiling(maxT/2)),
-                  seq(from = 0.3,
-                      to   = 0.9,
-                      length.out = floor(maxT/2)))
+    ssb_ind <- 2:n_ages       # Ages that spawn
+    a      <- 5.0              # S-R parameter
+    b      <- 0.1              # S-R parameter
+    sdR    <- 0.6              # Recruitment variability
+    sdO    <- 0.2              # Observation error
+    
+    f      <- c(rep(0, times = n_burn),
+                seq(from = 0.0,   # Fishing mort rate
+                    to   = 0.0,
+                    length.out = ceiling(n_sim/2)),
+                seq(from = 0.0,
+                    to   = 0.0,
+                    length.out = floor(n_sim/2)))
+    
+    fsel_a  <- c(0.01, 0.2, 0.6, # Fishing selectivity
+                rep(1.0, times = n_ages - 3))
     
     
-    # Initial conditions:
-    if(f[1]==0.2){                # Initial abundance.
-      N[1,]  <- c(60, 40, 25, 20)
-    } else if(f[1]==0.9){
-      N[1,]  <- c(50, 25, 8, 0.1)   
-    }
-    B[1]   <- sum(N[1,]*w_a)      # Initial biomass.
-    E[1]   <- sum(N[1,]*e_a)      # Initial eggs.
+    # Initial abundance:
+    abund_tru[1,]  <- seq(from = 20, to = 1, length.out = n_ages)   
     
-    # Simulate fishery:
-    for(t in 2:maxT){
+    # Simulate population with fishery:
+    for(t in 1:(n_t - 1)){
+      Z_a <- f[t]*fsel_a + m
+      # Spawning occurs before fishing
+      SSB[t]  <- sum(abund_tru[t,] * w_a * mat_a * exp(-Z_a * phi))
+      bh       <- a * SSB[t]/(1 + b * SSB[t])  # Mean recruitment
+      abund_tru[t+1,1] <- rlnorm(n = 1,       # Realized recruitment.
+                                 m = log(bh) - 0.5 * sdR^2,
+                                 s = sdR)
       
-      bh      <- a*E[t-1]/(1 + b*E[t-1])
-      N[t,1]  <- rlnorm(n = 1,             # Recruitment.
-                        m = log(bh) - 
-                          0.5*sdR^2,
-                        s = sdR)
-      N[t,-1] <- s_a%*%N[t-1,-n_ages]      # Survival.        
-      C[t,]   <- N[t,]*f[t]*v_a*w_a        # Catch (biomass).
-      N[t,]   <- N[t,] - C[t,]/w_a         # Abundance.
-      B[t]    <- sum(N[t,]*w_a)            # Total biomass.
-      E[t]    <- sum(N[t,]*e_a)            # Total eggs produced.
-      
+      abund_tru[t+1,-1] <- exp(-Z_a[-n_ages]) * abund_tru[t,-n_ages] # Transition
+      C[t,]   <- abund_tru[t,] * exp(-m) * (1 - exp(-f[t] * fsel_a)) * w_a # Catch (biomass).
     }
     
-    # Add seasonality:
-    min2max_ratio <- seas_ratio %>% sample(1)
-    spr <- c(min2max_ratio, 1) %>% sample(1) # Spring availability
+    # Simulate multiple surveys with different selectivities,
+    # independent log-normal error and an outlier in one year.
+    abund_obs <- array(data = NA,
+                       dim = c(n_t, n_ages, n_surveys),
+                       dimnames = list(NULL,
+                                       paste0("age", 1:n_ages),
+                                       paste0("survey", 1:n_surveys)))
     
-    if(spr == 1) {
-      fal <- min2max_ratio  # Fall availability
-    } else { fal <- 1 }
+    obs_cov <- matrix(data = sdO^2/2, 
+                      nrow = n_surveys, 
+                      ncol = n_surveys)
+    diag(obs_cov) <- rep(sdO^2, times = n_surveys)
     
-    N_sea_tru <- N[rep(1:nrow(N), # True seasonal abundance. 
-                       each = n_seas),] *
-      rep(x    = c(spr, fal),
-          leng = nrow(N)*n_seas)
-    seas <- rep(c("Spring","Fall"), leng = n_seas*maxT)
+    outlier_ind <- sample((n_burn + 1):n_t, size = 1)
+    outlier_year <- c((2016 - n_t + 1):2016)[outlier_ind]
+    sd_multiplier_vect <- rep(1, times = n_t)
+    sd_multiplier_vect[outlier_ind] <- sd_multiplier
     
+    # Fall survey selectivity
+    fall_select <- c(0.1, 0.5, rep(1, times = n_ages - 2))
+    # Spring survey selectivity
+    spring_select <- c(0.01, 0.25, rep(1, times = n_ages - 2))
+    survey_select <- array(data = c(fall_select, spring_select),
+                           dim = c(length(spring_select), 1, n_surveys))
     
-    # Add observation error:
-    # Randomly an observation to make outlier by increasing
-    # its variance:
-    sdO_outlier <- rep(sdO, times = maxT*n_seas)
-    sdO_outlier[sample(1:c(maxT*n_seas), size = 1)] <- 10*sdO
-      
-    N_sea_obs_vect <- rlnorm(n = prod(dim(N_sea_tru)),
-                             m = log(N_sea_tru) - 
-                               0.5*sdO_outlier^2,
-                             s = sdO_outlier)
-    # Convert to matrix:
-    N_sea_obs <- matrix(data = N_sea_obs_vect, 
-                        nrow = maxT*n_seas,
-                        ncol = n_ages)
+    for (i in 1:n_t) {
+      obs_error <-  exp(sd_multiplier_vect[i] *
+                        MASS::mvrnorm(mu = rep(0, 
+                                               times = n_surveys), 
+                                      Sigma = obs_cov))
+      for (j in 1:n_ages) {
+        abund_obs[i,j,] <- abund_tru[i,j] * survey_select[j,1,] * obs_error
+      }
+    }
     
     # Calculate biomass:
-    Observed <- as.vector(N_sea_obs%*%w_a)
-    True     <- as.vector(N_sea_tru%*%w_a)
+    biomass_tru <- abund_tru %*% w_a
+    biomass_obs <- matrix(nrow = n_t, ncol = n_surveys)
+    colnames(biomass_obs) <- paste0("survey", 1:n_surveys)
     
-    return(data.frame(year = year,
-                      seas = seas,
-                      Observed = Observed,
-                      True  = True))
+    for (i in 1:n_surveys) {
+      biomass_obs[,i] <- abund_obs[,,i] %*% w_a
+    }
+    
+    df2return <- 
+      data.frame(year = (2016 - n_t + 1):2016,
+                 outlier_year = outlier_year,
+                 biomass_obs = biomass_obs,
+                 biomass_tru = biomass_tru,
+                 abund_tru = abund_tru,
+                 abund_obs = abund_obs)
+    
+    if (return_burn == FALSE) {
+      df2return %<>% dplyr::filter(year >= (2016 - n_sim)) 
+    }
+    
+    return(df2return)
 }

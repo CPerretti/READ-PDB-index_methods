@@ -43,10 +43,10 @@ parameters <- list(
 
 # Fit with floors model
 obj_wfloors <- MakeADFun(dat_wfloors,
-                 parameters,
-                 DLL = "yt_rw", 
-                 random = c("logB"), 
-                 silent = TRUE)
+                         parameters,
+                         DLL = "yt_rw", 
+                         random = c("logB"), 
+                         silent = TRUE)
 
 opt_wfloors <- nlminb(obj_wfloors$par, 
                       obj_wfloors$fn, 

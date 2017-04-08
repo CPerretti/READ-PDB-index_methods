@@ -4,6 +4,7 @@ source("2-load.R")
 # Re-arrange yellowtail data for model fitting
 df_yt <- 
   data %>%
+  dplyr::mutate(Survey = as.character(Survey)) %>%
   # Expand biomass per tow to total biomass adjusted for catchability
   dplyr::mutate(biomass = NA,
                 # Expand DFO
@@ -47,8 +48,8 @@ df_yt <-
                 Year <= 2016) %>%
   # Calculate survey average
   dplyr::bind_rows({dplyr::group_by(., Year) %>%
-      dplyr::summarise(biomass = mean(biomass)) %>%
-      data.frame(., Survey = "Average")}) %>%
+                    dplyr::summarise(biomass = mean(biomass)) %>%
+                    data.frame(., Survey = "Average")}) %>%
   # Scale down biomass 
   dplyr::mutate(biomass = biomass/1000) %>%
   # Calculate log for TMB model fitting
