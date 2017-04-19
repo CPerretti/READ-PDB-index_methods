@@ -27,7 +27,7 @@ ggplot(df2p %>% dplyr::filter(variable %in% c("abund_obs.age1.survey1",
        aes(x = year, y = value, color = variable)) +
   geom_line() +
   geom_point(size = 0.3) +
-  geom_vline(xintercept = dat2p %>% 
+  geom_vline(xintercept = df2p %>% 
                           dplyr::filter(variable == "outlier_year") %$%
                           value %>% unique) +
   xlab("Year") +
