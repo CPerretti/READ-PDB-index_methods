@@ -92,6 +92,8 @@ run_sim <- function(n_ages,
                                  s = sdR)
       
       abund_tru[t+1,-1] <- exp(-Z_a[-n_ages]) * abund_tru[t,-n_ages] # Transition
+      # I think the following line creates a plus group
+      abund_tru[t+1,n_ages] <- abund_tru[t+1,n_ages] + exp(-Z_a[nages]) * abund_tru[t,n_ages]
       C[t,]   <- abund_tru[t,] * exp(-m) * (1 - exp(-f[t] * fsel_a)) * w_a # Catch (biomass).
     }
     
