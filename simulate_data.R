@@ -22,8 +22,8 @@ ggplot(df2p %>% dplyr::filter(variable %in% c("abund_obs.age1.survey1",
                                                "abund_obs.age1.survey2",
                                                "abund_obs.age5.survey1",
                                                "abund_obs.age5.survey2",
-                                               "abund_obs.age9.survey1",
-                                               "abund_obs.age9.survey2")),
+                                               "abund_obs.age10.survey1",
+                                               "abund_obs.age10.survey2")),
        aes(x = year, y = value, color = variable)) +
   geom_line() +
   geom_point(size = 0.3) +
