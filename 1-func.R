@@ -33,7 +33,8 @@ run_sim <- function(n_ages,
                     sd_multiplier,
                     n_burn,
                     n_sim,
-                    return_burn = FALSE){
+                    return_burn = FALSE,
+                    cor_mat){
     
     n_t <- n_burn + n_sim
       
@@ -60,11 +61,11 @@ run_sim <- function(n_ages,
     m      <- 0.4 # Natural mortality
     phi    <- 0.4167 # Fraction of year before spawning
     
-    ssb_ind <- 2:n_ages       # Ages that spawn
-    a      <- 5.0              # S-R parameter
-    b      <- 0.1              # S-R parameter
-    sdR    <- 0.6              # Recruitment variability
-    sdO    <- 0.2              # Observation error
+    ssb_ind <- 2:n_ages        # Ages that spawn
+    a       <- 5.0             # S-R parameter
+    b       <- 0.1             # S-R parameter
+    sdR     <- 0.6             # Recruitment variability
+    sdO     <- 0.2             # Observation error
     
     f      <- c(rep(0, times = n_burn),
                 seq(from = 0.0,   # Fishing mort rate
@@ -79,7 +80,9 @@ run_sim <- function(n_ages,
     
     
     # Initial abundance:
-    abund_tru[1,]  <- seq(from = 20, to = 1, length.out = n_ages)   
+    abund_tru[1,]  <- seq(from = 20, 
+                          to = 1, 
+                          length.out = n_ages)   
     
     # Simulate population with fishery:
     for(t in 1:(n_t - 1)){
@@ -92,7 +95,7 @@ run_sim <- function(n_ages,
                                  s = sdR)
       
       abund_tru[t+1,-1] <- exp(-Z_a[-n_ages]) * abund_tru[t,-n_ages] # Transition
-      # I think the following line creates a plus group
+      # Plus group
       abund_tru[t+1,n_ages] <- abund_tru[t+1,n_ages] + exp(-Z_a[n_ages]) * abund_tru[t,n_ages]
       C[t,]   <- abund_tru[t,] * exp(-m) * (1 - exp(-f[t] * fsel_a)) * w_a # Catch (biomass).
     }
@@ -104,11 +107,9 @@ run_sim <- function(n_ages,
                        dimnames = list(NULL,
                                        paste0("age", 1:n_ages),
                                        paste0("survey", 1:n_surveys)))
-    
-    obs_cov <- matrix(data = sdO^2/2, 
-                      nrow = n_surveys, 
-                      ncol = n_surveys)
-    diag(obs_cov) <- rep(sdO^2, times = n_surveys)
+    # Set obs error cor to cor of real data
+    obs_cov <- 0.5*cor_mat*sdO*sdO
+    diag(obs_cov) <- sdO^2
     
     outlier_ind <- sample((n_burn + 1):n_t, size = 1)
     outlier_year <- c((2016 - n_t + 1):2016)[outlier_ind]
@@ -119,7 +120,11 @@ run_sim <- function(n_ages,
     fall_select <- c(0.1, 0.5, rep(1, times = n_ages - 2))
     # Spring survey selectivity
     spring_select <- c(0.01, 0.25, rep(1, times = n_ages - 2))
-    survey_select <- array(data = c(fall_select, spring_select),
+    # DFO survey selectivity
+    dfo_select <- spring_select
+    survey_select <- array(data = c(fall_select, 
+                                    spring_select,
+                                    dfo_select),
                            dim = c(length(spring_select), 1, n_surveys))
     
     for (i in 1:n_t) {
@@ -128,7 +133,11 @@ run_sim <- function(n_ages,
                                                times = n_surveys), 
                                       Sigma = obs_cov))
       for (j in 1:n_ages) {
-        abund_obs[i,j,] <- abund_tru[i,j] * survey_select[j,1,] * obs_error
+        abund_obs[i,j,] <- abund_tru[i,j] * 
+                           survey_select[j,1,] * 
+                           obs_error *
+                           # Take this out if you want numbers caught:
+                           1/survey_select[j,1,] # Expand abundance
       }
     }
     
@@ -145,12 +154,13 @@ run_sim <- function(n_ages,
       data.frame(year = (2016 - n_t + 1):2016,
                  outlier_year = outlier_year,
                  biomass_obs = biomass_obs,
+                 biomass_obs_log = log(biomass_obs),
                  biomass_tru = biomass_tru,
                  abund_tru = abund_tru,
                  abund_obs = abund_obs)
     
     if (return_burn == FALSE) {
-      df2return %<>% dplyr::filter(year >= (2016 - n_sim)) 
+      df2return %<>% dplyr::filter(year >= (2016 - n_sim + 1)) 
     }
     
     return(df2return)

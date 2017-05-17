@@ -6,9 +6,6 @@ Type objective_function<Type>::operator() ()
   DATA_VECTOR(log_obs_DFO);        // log scale values of expanded surveys
   DATA_VECTOR(log_obs_spring);
   DATA_VECTOR(log_obs_fall);
-  DATA_VECTOR(DFO_sd);             // log scale standard deviations of surveys (computed from CVs in R code)
-  DATA_VECTOR(spring_sd);
-  DATA_VECTOR(fall_sd);
   
   PARAMETER_VECTOR(logB);          // population biomass on log scale
   PARAMETER(log_process_error);    // process error for population
@@ -31,9 +28,9 @@ Type objective_function<Type>::operator() ()
   }
   
   for(int y = 0; y < n_obs; y++){      // likelihood for observations, note addition of obs_error and year-specific sd
-    nll -= dnorm(log_obs_DFO[y],    logB[y], obs_error_DFO + DFO_sd[y],       true);
-    nll -= dnorm(log_obs_spring[y], logB[y], obs_error_spring + spring_sd[y], true);
-    nll -= dnorm(log_obs_fall[y],   logB[y], obs_error_fall + fall_sd[y],     true);
+    nll -= dnorm(log_obs_DFO[y],    logB[y], obs_error_DFO,    true);
+    nll -= dnorm(log_obs_spring[y], logB[y], obs_error_spring, true);
+    nll -= dnorm(log_obs_fall[y],   logB[y], obs_error_fall,   true);
   }
   
   ADREPORT(process_error);
