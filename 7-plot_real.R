@@ -1,33 +1,22 @@
-source("6-fit_sim.R")
-
-## Set up data for plots ----------------------------------
-df2p_yt <-
-  df_yt %>%
-  # add rw fit to original dataframe
-  dplyr::bind_rows({df_fit_real %>%
-                    tidyr::gather(Survey, biomass, -Year)}) %>%
-  # rename variables
-  dplyr::select(Year, Survey, biomass) %>%
-  dplyr::rename(variable = Survey,
-                value = biomass,
-                year = Year)
+source("6-calc_error.R")
+# Make plots of real data
 
 
-## Plot on 1000 mt scale ----
+# Plot on 1000 mt scale
 df_line <-
-  df2p_yt %>% 
+  df_real_withfit %>% 
   dplyr::filter(variable %in% c("Average",
-                                "RW"))
+                                "biomass_rw"))
 df_point <-
-  df2p_yt %>% 
+  df_real_withfit %>% 
   dplyr::filter(variable %in% c("DFO", 
                                 "Spring", 
                                 "Fall"))
 
 df_ribbon <-
-  df2p_yt %>% 
-  dplyr::filter(variable %in% c("RW hi", 
-                                "RW lo")) %>%
+  df_real_withfit %>% 
+  dplyr::filter(variable %in% c("biomass_rw_hi95", 
+                                "biomass_rw_lo95")) %>%
   dplyr::select(variable, year, value) %>%
   tidyr::spread(variable, value)
 
@@ -39,8 +28,8 @@ ggplot(data = df_line, aes(x = year)) +
                                 "blue")) +
   geom_ribbon(data = df_ribbon,
               aes(x = year, 
-                  ymin = `RW lo`, 
-                  ymax = `RW hi`),
+                  ymin = biomass_rw_lo95, 
+                  ymax = biomass_rw_hi95),
               alpha = 0.3,
               fill = "blue",
               size = 0.1) +

@@ -8,9 +8,9 @@
 # get survey data in kg/tow
 data <- read.csv("data/GBYT_survey_data.csv")
 
-dfo <- data[data$Survey == "DFO", ]
-spring <- data[data$Survey == "Spring", ]
-fall <- data[data$Survey == "Fall", ]
+# dfo <- data[data$Survey == "DFO", ]
+# spring <- data[data$Survey == "Spring", ]
+# fall <- data[data$Survey == "Fall", ]
 
 # set up constants for conversions
 
@@ -35,44 +35,44 @@ tow.area.doors.nmfs <- 0.0606
 catchability <- 0.37
 
 # compute survey biomass (metric tons)
-B.dfo <- dfo[,3] * (total.area.dfo / (tow.area.doors.dfo * catchability)) / 1000
-
-spring.BIG <- c(spring[spring$Year <= 2008, 3] * ALB2BIG.spring, spring[spring$Year >= 2009, 3])
-B.spring <- spring.BIG * (total.area.nmfs / (tow.area.doors.nmfs * catchability)) / 1000
-
-fall.BIG <- c(fall[fall$Year <= 2008, 3] * ALB2BIG.fall, fall[fall$Year >= 2009, 3])
-B.fall <- fall.BIG * (total.area.nmfs / (tow.area.doors.nmfs * catchability)) / 1000
+# B.dfo <- dfo[,3] * (total.area.dfo / (tow.area.doors.dfo * catchability)) / 1000
+# 
+# spring.BIG <- c(spring[spring$Year <= 2008, 3] * ALB2BIG.spring, spring[spring$Year >= 2009, 3])
+# B.spring <- spring.BIG * (total.area.nmfs / (tow.area.doors.nmfs * catchability)) / 1000
+# 
+# fall.BIG <- c(fall[fall$Year <= 2008, 3] * ALB2BIG.fall, fall[fall$Year >= 2009, 3])
+# B.fall <- fall.BIG * (total.area.nmfs / (tow.area.doors.nmfs * catchability)) / 1000
 
 # create data frame for data
 # note fall data from previous year
-start.year <- 1987
-end.year   <- 2016
-year <- seq(start.year, end.year)
+# start.year <- 1987
+# end.year   <- 2016
+# year2include <- seq(start.year, end.year)
 
-B <- data.frame("Year" = year,
-                "DFO.B"     = B.dfo[dfo$Year %in% year],
-                "Spring.B"  = B.spring[spring$Year %in% year],
-                "Fall.B"    = B.fall[fall$Year %in% (year - 1)],
-                "DFO.CV"    = dfo[dfo$Year %in% year, 4],
-                "Spring.CV" = spring[spring$Year %in% year, 4],
-                "Fall.CV"   = fall[fall$Year %in% (year - 1), 4])
+# B <- data.frame("year"      = year2include,
+#                 "DFO.B"     = B.dfo[dfo$Year %in% year2include],
+#                 "Spring.B"  = B.spring[spring$Year %in% year2include],
+#                 "Fall.B"    = B.fall[fall$Year %in% (year2include - 1)],
+#                 "DFO.CV"    = dfo[dfo$Year %in% year2include, 4],
+#                 "Spring.CV" = spring[spring$Year %in% year2include, 4],
+#                 "Fall.CV"   = fall[fall$Year %in% (year2include - 1), 4])
 
-avg.B <- apply(B[,2:4], 1, mean) # average biomass from the three surveys
+#avg.B <- apply(B[,2:4], 1, mean) # average biomass from the three surveys
 
 # make a plot
-# plot(B$Year, B$DFO.B, 
-#      xlab="Year", ylab="Biomass (mt)", 
+# plot(B$year, B$DFO.B, 
+#      xlab="year", ylab="Biomass (mt)", 
 #      ylim=c(0,max(B[,2:4])), type='l', col="red")
-#  lines(B$Year, B$Spring.B, col="dark green")
-#  lines(B$Year, B$Fall.B, col="blue")
-#  lines(B$Year, avg.B, col="black", lwd=2)
+#  lines(B$year, B$Spring.B, col="dark green")
+#  lines(B$year, B$Fall.B, col="blue")
+#  lines(B$year, avg.B, col="black", lwd=2)
 #  legend('topleft', 
 #         legend=c("DFO","Spring","Fall","Average"), 
 #         pch=NA, lty=1, lwd=c(1,1,1,2), 
 #         col=c("red","dark green","blue","black"))
 
 
- # yt_data <- data.frame(YEAR = B$Year, biomass = avg.B)
+ # yt_data <- data.frame(YEAR = B$year, biomass = avg.B)
  # write.csv(yt_data, "../NEFMC_FEP/yt_data.csv")
  
 

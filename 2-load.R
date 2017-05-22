@@ -1,5 +1,5 @@
-# Load data
 source("1-func.R")
+# Load GB yellowtail survey data in kg/tow
 
-# Load GB yellowtail data
-source("convert_survey_kgtow_B.r")
+data <- read.csv("data/GBYT_survey_data.csv")
+
