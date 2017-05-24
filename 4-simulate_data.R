@@ -1,7 +1,7 @@
 source("3-clean.R")
 # Simulate data
 
-n_rep <- 1000
+n_rep <- 10#00
 df_sims <-
   base::expand.grid(rep = 1:n_rep,
                     scenario_f = c("No fishing")) %>%

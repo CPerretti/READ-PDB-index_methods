@@ -62,8 +62,8 @@ run_sim <- function(n_ages,
     phi    <- 0.4167 # Fraction of year before spawning
     
     ssb_ind <- 2:n_ages        # Ages that spawn
-    a       <- 5.0             # S-R parameter
-    b       <- 0.1             # S-R parameter
+    a       <- 10.0             # S-R parameter
+    b       <- 0.001             # S-R parameter
     sdR     <- 0.6             # Recruitment variability
     sdO     <- 0.2             # Observation error
     
@@ -79,8 +79,8 @@ run_sim <- function(n_ages,
                 rep(1.0, times = n_ages - 3))
     
     
-    # Initial abundance:
-    abund_tru[1,]  <- seq(from = 20, 
+    # Initial abundance (in ten thousands):
+    abund_tru[1,]  <- seq(from = 200, 
                           to = 1, 
                           length.out = n_ages)   
     
@@ -167,8 +167,6 @@ run_sim <- function(n_ages,
 }
 
 ## Fit TMB and average model ------------------------------
-
-
 fit_models <- function(...,
                        year,
                        log_biomass_survey1, 
