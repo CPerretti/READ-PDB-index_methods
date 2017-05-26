@@ -3,11 +3,15 @@ source("7-plot_real.R")
 
 ## Setup data for plots -----------------------------------
 rep2p <- 1
-scen2p <- "No fishing"
+driver2p <- "f"
+scen2p <- "no change"
+
+
 outlier_year <- 
   df_sims %>%
   dplyr::filter(rep == rep2p,
-                scenario_f == scen2p) %$%
+                scenario == scen2p,
+                driver == driver2p) %$%
   outlier_year %>%
   unique
 
@@ -15,25 +19,30 @@ outlier_year <-
 df_sims_withfit2p <-
   df_sims_withfit %>%
   dplyr::filter(rep == rep2p,
-                scenario_f == scen2p)
+                driver == driver2p,
+                scenario == scen2p)
 
 ## Plot simulated age structure ---------------------------
-ggplot(df_sims_withfit2p %>%
-         dplyr::filter(variable %in% c("abund_obs.age1.survey1",
-                                       "abund_obs.age1.survey2",
-                                       "abund_obs.age5.survey1",
-                                       "abund_obs.age5.survey2",
-                                       "abund_obs.age9.survey1",
-                                       "abund_obs.age9.survey2")),
-       aes(x = year, y = value, color = variable)) +
-  geom_line() +
-  geom_point(size = 0.3) +
-  geom_vline(xintercept = df_sims_withfit2p %>% 
-               dplyr::filter(variable == "outlier_year") %$%
-               value %>% unique) +
-  xlab("Year") +
-  ylab("Abundance") +
-  theme(legend.title = element_blank())
+p_age <-
+  ggplot(df_sims_withfit2p %>%
+           dplyr::filter(variable %in% c("abund_obs.age1.survey1",
+                                         "abund_obs.age1.survey2",
+                                         "abund_obs.age5.survey1",
+                                         "abund_obs.age5.survey2",
+                                         "abund_obs.age9.survey1",
+                                         "abund_obs.age9.survey2")),
+         aes(x = year, y = value, color = variable)) +
+    geom_line() +
+    geom_point(size = 0.3) +
+    geom_vline(xintercept = df_sims_withfit2p %>% 
+                 dplyr::filter(variable == "outlier_year") %$%
+                 value %>% unique) +
+    xlab("Year") +
+    ylab("Abundance") +
+    theme(legend.title = element_blank())
+
+p_age
+
 
 ## Plot simulated and fit biomass ---------------------------------
 df_line <-
@@ -82,22 +91,25 @@ ggplot(df_sims_withfit2p, aes(x = year)) +
               alpha = 0.3,
               fill = "blue",
               size = 0.1) +
+  geom_vline(xintercept = max(df_sims_withfit2p$year) - n_scenario) +
   xlab("Year") +
-  ylab("Biomass") +
+  ylab("Biomass (1000 mt)") +
   theme(legend.title = element_blank())
 
 
 ## Plot error comparison ----------------------------------
-ggplot(df_errors, aes(x = method, y = mae, fill = smooth)) + 
+p_err <-
+  ggplot(df_errors, aes(x = method, y = mae, fill = smooth)) + 
   geom_bar(position = position_dodge(), stat = "identity") +
   geom_errorbar(aes(ymin = mae - mae_ci, ymax = mae + mae_ci),
                 width = .2,                 
                 position = position_dodge(.9)) +
-  facet_grid(~scenario_f) +
+  facet_grid(driver~scenario) +
   ylab("Mean absolute error") +
   xlab("Model") +
   guides(fill = guide_legend(title = NULL))
 
+p_err
 
 ## Print coverage performance ------------------------------
 print(df_coverage)

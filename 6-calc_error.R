@@ -4,7 +4,7 @@ source("5-fit_models.R")
 
 df_errors <-
   df_sims_withfit %>%
-  dplyr::group_by(rep, scenario_f) %>%
+  dplyr::group_by(rep, driver, scenario) %>%
   dplyr::filter(variable %in% c("biomass_rw", 
                                 "biomass_rw_3ymean",
                                 "biomass_average",
@@ -20,10 +20,10 @@ df_errors <-
                                   variable)) %>%
   tidyr::spread(variable, value) %>%
   tidyr::gather(variable, value, 
-                -rep, -scenario_f, 
+                -rep, -driver, -scenario, 
                 -year, -biomass_tru) %>%
   dplyr::mutate(abs_err = abs(value - biomass_tru)) %>%
-  dplyr::group_by(scenario_f, variable) %>%
+  dplyr::group_by(driver, scenario, variable) %>%
   dplyr::summarise(mae = mean(abs_err),
                    mae_se = sd(abs_err)/length(abs_err)^0.5,
                    mae_ci = 1.96 * mae_se) %>%
@@ -68,7 +68,7 @@ df_coverage <-
                                         length(within_ci90) * 100,
                    coverage_ci75 = sum(within_ci75)/
                                          length(within_ci75) * 100) %>%
-  dplyr::group_by(scenario_f) %>%
+  dplyr::group_by(driver, scenario) %>%
   dplyr::summarise(coverage_ci95_mean = mean(coverage_ci95),
                    coverage_ci90_mean = mean(coverage_ci90),
                    coverage_ci75_mean = mean(coverage_ci75),

@@ -33,10 +33,15 @@ run_sim <- function(n_ages,
                     sd_multiplier,
                     n_burn,
                     n_sim,
+                    n_scenario,
+                    driver,
+                    scenario,
+                    df_r,
+                    df_f,
                     return_burn = FALSE,
                     cor_mat){
     
-    n_t <- n_burn + n_sim
+    n_t <- n_burn + n_sim + n_scenario
       
     # Pre-allocate matrices:
    abund_tru <- matrix(data = NA, # Abundance
@@ -62,26 +67,63 @@ run_sim <- function(n_ages,
     phi    <- 0.4167 # Fraction of year before spawning
     
     ssb_ind <- 2:n_ages        # Ages that spawn
-    a       <- 10.0             # S-R parameter
-    b       <- 0.001             # S-R parameter
-    sdR     <- 0.6             # Recruitment variability
+    # a       <- 10.0             # S-R parameter
+    # b       <- 0.001             # S-R parameter
+    sdR     <- 0.1             # Recruitment variability
     sdO     <- 0.2             # Observation error
     
-    f      <- c(rep(0, times = n_burn),
-                seq(from = 0.0,   # Fishing mort rate
-                    to   = 0.0,
-                    length.out = ceiling(n_sim/2)),
-                seq(from = 0.0,
-                    to   = 0.0,
-                    length.out = floor(n_sim/2)))
     
+    # Setup R time series
+    r0 <- c(rep(df_r$R[1], times = n_burn), df_r$R)
+    r <- c(r0, rep(df_r$R[nrow(df_r)], times = n_scenario))  
+    
+    # Set R for scenario years
+    if (driver == "r"){
+      if (scenario == "increasing biomass") {
+        # increase by r x% per year
+        r[(length(r)-n_scenario + 1):length(r)] <-
+          r[(length(r)-n_scenario + 1):length(r)] *
+          1.5^(1:n_scenario)
+      } else if (scenario == "decreasing biomass") {
+        # decrease by r x% per year
+        r[(length(r)-n_scenario + 1):length(r)] <-
+          r[(length(r)-n_scenario + 1):length(r)] *
+          0.5^(1:n_scenario)
+      } else if (scenario == "no change") {
+        r <- r
+      } else stop("scenario must be 'increasing biomass', 'decreasing biomass', or 'no change'")
+    }
+    
+    
+      
+    # Set F time series
+    f0 <- c(rep(df_f$Fmax[1], times = n_burn), df_f$Fmax)
+    f <- c(f0, rep(df_f$Fmax[nrow(df_f)], times = n_scenario))
+    
+    # Set F for scenario years
+    if (driver == "f") {
+      if (scenario == "increasing biomass") {
+        # decrease f by x% per year
+        f[(length(f)-n_scenario + 1):length(f)] <-
+          f[(length(f)-n_scenario + 1):length(f)] *
+          0.5^(1:n_scenario)
+      } else if (scenario == "decreasing biomass"){
+        # increase f by x% per year
+        f[(length(f)-n_scenario + 1):length(f)] <-
+          f[(length(f)-n_scenario + 1):length(f)] *
+          1.5^(1:n_scenario)
+      } else if (scenario == "no change") {
+        f <- f
+      } else stop("scenario must be 'increasing', 'decreasing', or 'no change'")
+    }
+
     fsel_a  <- c(0.01, 0.2, 0.6, # Fishing selectivity
                 rep(1.0, times = n_ages - 3))
     
     
     # Initial abundance (in ten thousands):
-    abund_tru[1,]  <- seq(from = 200, 
-                          to = 1, 
+    abund_tru[1,]  <- seq(from = 50000*1000, 
+                          to = 50000, 
                           length.out = n_ages)   
     
     # Simulate population with fishery:
@@ -89,9 +131,8 @@ run_sim <- function(n_ages,
       Z_a <- f[t]*fsel_a + m
       # Spawning occurs before fishing
       SSB[t]  <- sum(abund_tru[t,] * w_a * mat_a * exp(-Z_a * phi))
-      bh       <- a * SSB[t]/(1 + b * SSB[t])  # Mean recruitment
       abund_tru[t+1,1] <- rlnorm(n = 1,       # Realized recruitment.
-                                 m = log(bh) - 0.5 * sdR^2,
+                                 m = log(r[t]) - 0.5 * sdR^2,
                                  s = sdR)
       
       abund_tru[t+1,-1] <- exp(-Z_a[-n_ages]) * abund_tru[t,-n_ages] # Transition
@@ -111,8 +152,8 @@ run_sim <- function(n_ages,
     obs_cov <- 0.5*cor_mat*sdO*sdO
     diag(obs_cov) <- sdO^2
     
-    outlier_ind <- sample((n_burn + 1):n_t, size = 1)
-    outlier_year <- c((2016 - n_t + 1):2016)[outlier_ind]
+    outlier_ind <- sample((n_burn + 1):(n_burn + n_sim), size = 1)
+    outlier_year <- c((2013 - n_burn - n_sim + 1):2013)[outlier_ind]
     sd_multiplier_vect <- rep(1, times = n_t)
     sd_multiplier_vect[outlier_ind] <- sd_multiplier
     
@@ -142,16 +183,16 @@ run_sim <- function(n_ages,
     }
     
     # Calculate biomass:
-    biomass_tru <- abund_tru %*% w_a
+    biomass_tru <- abund_tru %*% w_a / 1000 / 1000 # convert kg to 1000mt
     biomass_obs <- matrix(nrow = n_t, ncol = n_surveys)
     colnames(biomass_obs) <- paste0("survey", 1:n_surveys)
     
     for (i in 1:n_surveys) {
-      biomass_obs[,i] <- abund_obs[,,i] %*% w_a
+      biomass_obs[,i] <- abund_obs[,,i] %*% w_a / 1000 / 1000 # convert kg to 1000mt
     }
     
     df2return <- 
-      data.frame(year = (2016 - n_t + 1):2016,
+      data.frame(year = (2013 + n_scenario - n_t + 1):(2013 + n_scenario),
                  outlier_year = outlier_year,
                  biomass_obs = biomass_obs,
                  biomass_obs_log = log(biomass_obs),

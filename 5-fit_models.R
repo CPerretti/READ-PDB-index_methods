@@ -13,7 +13,7 @@ dyn.load(dynlib("yt_rw"))
 # Fit model
 df_fit_sim <-
   df_sims %>%
-  dplyr::group_by(rep, scenario_f) %>%
+  dplyr::group_by(rep, driver, scenario) %>%
   dplyr::do(
     fit_models(year = .$year,
              log_biomass_survey1 = .$biomass_obs_log.survey1, 
@@ -33,10 +33,11 @@ df_fit_sim <-
 df_sims_withfit <-
   df_sims %>%
   tidyr::gather(variable, value, 
-                -year, -rep, -scenario_f) %>%
+                -year, -rep, -driver, -scenario) %>%
   dplyr::bind_rows({df_fit_sim %>%
                     tidyr::gather(variable, value, 
-                                  -year, -rep, -scenario_f)})
+                                  -year, -rep, -driver, 
+                                  -scenario)})
 
 
 ## Fit real data ------------------------------------------

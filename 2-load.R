@@ -3,3 +3,5 @@ source("1-func.R")
 
 data <- read.csv("data/GBYT_survey_data.csv")
 
+df_rfssb <- xlsx::read.xlsx("data/GBYTtimeseries.xlsx", 
+                            sheetName = "Sheet1")

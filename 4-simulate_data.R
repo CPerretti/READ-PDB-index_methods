@@ -1,17 +1,24 @@
 source("3-clean.R")
 # Simulate data
 
-n_rep <- 10#00
+n_rep <- 1000
+n_scenario <- 5 #Years in scenario (used again in plots)
 df_sims <-
   base::expand.grid(rep = 1:n_rep,
-                    scenario_f = c("No fishing")) %>%
-  dplyr::group_by(rep, scenario_f) %>%
+                    driver = c("f", "r"),
+                    scenario = c("no change", "increasing biomass", "decreasing biomass")) %>%
+  dplyr::group_by(rep, driver, scenario) %>%
   dplyr::do(
     run_sim(n_ages        = 10,
             n_surveys     = 3,
             sd_multiplier = 4,
             n_burn        = 100,
-            n_sim         = 30,
+            n_sim         = length(df_r$year),
+            n_scenario    = n_scenario,
+            driver        = .$driver,
+            scenario      = .$scenario,
+            df_r          = df_r,
+            df_f          = df_f,
             return_burn   = FALSE,
             cor_mat       = matrix(data = 0,
                                    nrow = 3,

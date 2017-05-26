@@ -82,5 +82,19 @@ df_real <-
   # Calculate log for TMB model fitting
   dplyr::mutate(log_biomass = log(biomass))
 
+## Extract R and F estimates ------------------------------
+df_r <-
+  df_rfssb %>%
+  dplyr::select(Year, Recruitement..1000s.of.fish.) %>%
+  dplyr::rename(year = Year,
+                R = Recruitement..1000s.of.fish.) %>%
+  # Change scale to count (not 1000s)
+  dplyr::mutate(R = R*1000) 
+
+df_f <-
+  df_rfssb %>%
+  dplyr::select(Year, F.on.fully.selected.ages.4.) %>%
+  dplyr::rename(year = Year,
+                Fmax = F.on.fully.selected.ages.4.)
 
 
