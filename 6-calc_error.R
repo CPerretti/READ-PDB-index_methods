@@ -38,7 +38,7 @@ df_errors <-
                                 "Terminal year"))
 
 
-## Calculate coverage probability of random walk model ----
+## Calculate coverage probability of random walk model for 2016 ----
 df_coverage <-
   df_sims_withfit %>%
   dplyr::filter(variable %in% c("biomass_tru",
@@ -81,4 +81,15 @@ df_coverage <-
                                           length(coverage_ci75)^0.5)
   
   
-  
+## Calculate coverage decile of random walk model for 2016 ----
+df_coverage_decile <-
+  df_sims_withfit %>%
+  dplyr::filter(variable %in% c("biomass_tru",
+                                "biomass_rw",
+                                "biomass_rw_hi95"),
+                year == 2016) %>%
+  tidyr::spread(variable, value) %>%
+  dplyr::mutate(se = (log(biomass_rw_hi95) - log(biomass_rw) ) / 1.96,
+                decile = floor(10 * pnorm(q=log(biomass_tru), mean=log(biomass_rw), sd=se))) 
+
+ 

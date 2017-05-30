@@ -115,6 +115,14 @@ p_err
 print(df_coverage)
 
 
+## Plot coverage deciles for rw in 2016 --------------------
+p_decile <-
+  ggplot(df_coverage_decile, aes(x=decile)) +
+  stat_count() +
+  facet_grid(driver~scenario) +
+  scale_x_discrete(limits=seq(0,9))
+
+p_decile
 
 
 
