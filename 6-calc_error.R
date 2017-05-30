@@ -48,7 +48,8 @@ df_coverage <-
                                 "biomass_rw_hi90",
                                 "biomass_rw_lo90",
                                 "biomass_rw_hi75",
-                                "biomass_rw_lo75")) %>%
+                                "biomass_rw_lo75"),
+                year == 2016) %>%
   tidyr::spread(variable, value) %>%
   dplyr::mutate(within_ci95 = ifelse(biomass_tru < biomass_rw_hi95 &
                                       biomass_tru > biomass_rw_lo95,
