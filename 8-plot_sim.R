@@ -2,9 +2,9 @@ source("7-plot_real.R")
 # Make plots of simulation results
 
 ## Setup data for plots -----------------------------------
-rep2p <- 1
-driver2p <- "f"
-scen2p <- "no change"
+rep2p <- 2
+driver2p <- "r"
+scen2p <- "decreasing biomass"
 
 
 outlier_year <- 
@@ -115,14 +115,47 @@ p_err
 print(df_coverage)
 
 
-## Plot coverage deciles for rw in 2016 --------------------
+## Plot coverage deciles for rw in 2016 -------------------
 p_decile <-
   ggplot(df_coverage_decile, aes(x=decile)) +
   stat_count() +
   facet_grid(driver~scenario) +
-  scale_x_discrete(limits=seq(0,9))
+  scale_x_discrete(limits = seq(0,9))
 
 p_decile
 
 
 
+## Plot terminal year fit vs observed for just rw ----------
+df_fitvsobs <-
+  df_sims_withfit %>%
+  dplyr::filter(year > (terminal_year - n_scenario),
+                variable %in% c("biomass_tru",
+                                "biomass_rw",
+                                "biomass_rw_3ymean",
+                                "biomass_average",
+                                "biomass_average_3ymean"
+                                )) %>%
+  tidyr::spread(variable, value) %>%
+  tidyr::gather(method, value, 
+                -rep, -driver, -scenario, -year, -biomass_tru)
+
+# Just rw
+ggplot(df_fitvsobs %>%
+         dplyr::filter(method %in% c("biomass_tru",
+                                     "biomass_rw")),
+       aes(x = biomass_tru, y = value)) +
+  geom_point(alpha = 0.5, size = 0.5) +
+  geom_abline() +
+  facet_grid(driver~scenario, scales = "free") +
+  xlab("True state in terminal year") +
+  ylab("Estimated state in terminal year")
+
+# All methods
+ggplot(df_fitvsobs,
+       aes(x = biomass_tru, y = value)) +
+  geom_point(alpha = 0.2, size = 0.5) +
+  geom_abline() +
+  facet_grid(method~driver*scenario, scales = "free") +
+  xlab("True state in terminal year") +
+  ylab("Estimated state in terminal year")

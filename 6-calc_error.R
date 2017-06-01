@@ -10,7 +10,7 @@ df_errors <-
                                 "biomass_average",
                                 "biomass_average_3ymean",
                                 "biomass_tru"),
-                year == 2016) %>%
+                year > (terminal_year - n_scenario)) %>%
   # Rename variables for plots
   dplyr::mutate(variable = ifelse(variable == "biomass_rw",
                                   "biomass_rw_terminal",
@@ -49,7 +49,7 @@ df_coverage <-
                                 "biomass_rw_lo90",
                                 "biomass_rw_hi75",
                                 "biomass_rw_lo75"),
-                year == 2016) %>%
+                year > (terminal_year - n_scenario)) %>%
   tidyr::spread(variable, value) %>%
   dplyr::mutate(within_ci95 = ifelse(biomass_tru < biomass_rw_hi95 &
                                       biomass_tru > biomass_rw_lo95,
@@ -87,9 +87,47 @@ df_coverage_decile <-
   dplyr::filter(variable %in% c("biomass_tru",
                                 "biomass_rw",
                                 "biomass_rw_hi95"),
-                year == 2016) %>%
+                year > (terminal_year - n_scenario)) %>%
   tidyr::spread(variable, value) %>%
-  dplyr::mutate(se = (log(biomass_rw_hi95) - log(biomass_rw) ) / 1.96,
-                decile = floor(10 * pnorm(q=log(biomass_tru), mean=log(biomass_rw), sd=se))) 
+  dplyr::mutate(se = (log(biomass_rw_hi95) - log(biomass_rw)) / 1.96,
+                decile = floor(10 * pnorm(q    = log(biomass_tru), 
+                                          mean = log(biomass_rw), 
+                                          sd   = se)))
+
+## Calculate the mean error in 2016 (not mean absolute error) ------
+# This is to check for the direction of error
+
+df_meanerr <-
+  df_sims_withfit %>%
+  dplyr::group_by(rep, driver, scenario) %>%
+  dplyr::filter(variable %in% c("biomass_rw", 
+                                "biomass_rw_3ymean",
+                                "biomass_average",
+                                "biomass_average_3ymean",
+                                "biomass_tru"),
+                year > (terminal_year - n_scenario)) %>%
+  # Rename variables for plots
+  dplyr::mutate(variable = ifelse(variable == "biomass_rw",
+                                  "biomass_rw_terminal",
+                                  variable),
+                variable = ifelse(variable == "biomass_average",
+                                  "biomass_average_terminal",
+                                  variable)) %>%
+  tidyr::spread(variable, value) %>%
+  tidyr::gather(variable, value, 
+                -rep, -driver, -scenario, 
+                -year, -biomass_tru) %>%
+  dplyr::mutate(err = value - biomass_tru) %>%
+  dplyr::group_by(driver, scenario, variable) %>%
+  dplyr::summarise(me = mean(err)) %>%
+  tidyr::separate(variable, into = c("variable_fit", 
+                                     "method", 
+                                     "smooth")) %>%
+  dplyr::mutate(method = ifelse(method == "average",
+                                "Average surveys",
+                                "Random walk"),
+                smooth = ifelse(smooth == "3ymean",
+                                "Three-year mean",
+                                "Terminal year"))
 
  

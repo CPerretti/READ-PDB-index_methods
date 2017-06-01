@@ -38,6 +38,7 @@ run_sim <- function(n_ages,
                     scenario,
                     df_r,
                     df_f,
+                    terminal_year,
                     return_burn = FALSE,
                     cor_mat){
     
@@ -67,8 +68,6 @@ run_sim <- function(n_ages,
     phi    <- 0.4167 # Fraction of year before spawning
     
     ssb_ind <- 2:n_ages        # Ages that spawn
-    # a       <- 10.0             # S-R parameter
-    # b       <- 0.001             # S-R parameter
     sdR     <- 0.1             # Recruitment variability
     sdO     <- 0.2             # Observation error
     
@@ -152,8 +151,8 @@ run_sim <- function(n_ages,
     obs_cov <- 0.5*cor_mat*sdO*sdO
     diag(obs_cov) <- sdO^2
     
-    outlier_ind <- sample((n_burn + 1):(n_burn + n_sim), size = 1)
-    outlier_year <- c((2013 - n_burn - n_sim + 1):2013)[outlier_ind]
+    outlier_ind <- sample((n_burn + 1):n_t, size = 1)
+    outlier_year <- c((terminal_year - n_t + 1):terminal_year)[outlier_ind]
     sd_multiplier_vect <- rep(1, times = n_t)
     sd_multiplier_vect[outlier_ind] <- sd_multiplier
     
@@ -201,7 +200,7 @@ run_sim <- function(n_ages,
                  abund_obs = abund_obs)
     
     if (return_burn == FALSE) {
-      df2return %<>% dplyr::filter(year >= (2016 - n_sim + 1)) 
+      df2return %<>% dplyr::filter(year >= (terminal_year - n_sim + 1)) 
     }
     
     return(df2return)
