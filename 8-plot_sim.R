@@ -2,9 +2,9 @@ source("7-plot_real.R")
 # Make plots of simulation results
 
 ## Setup data for plots -----------------------------------
-rep2p <- 2
-driver2p <- "r"
-scen2p <- "decreasing biomass"
+rep2p <- 1
+driver2p <- "f"
+scen2p <- "increasing biomass"
 
 
 outlier_year <- 
@@ -59,10 +59,16 @@ df_point <-
 
 df_ribbon <-
   df_sims_withfit2p %>% 
-  dplyr::filter(variable %in% c("biomass_rw_hi95", 
-                                "biomass_rw_lo95")) %>%
+  dplyr::filter(variable %in% c("biomass_rw", 
+                                "biomass_rw_se")) %>%
   dplyr::select(variable, year, value) %>%
-  tidyr::spread(variable, value)
+  tidyr::spread(variable, value) %>%
+  dplyr::mutate(biomass_rw_lo95 = (log(biomass_rw) - 
+                                     1.96 * log(biomass_rw_se)) %>%
+                  exp,
+                biomass_rw_hi95 = (log(biomass_rw) + 
+                                     1.96 * log(biomass_rw_se)) %>%
+                  exp)
 
 df_outlier <- 
   df_sims_withfit2p %>%
@@ -110,9 +116,6 @@ p_err <-
   guides(fill = guide_legend(title = NULL))
 
 p_err
-
-## Print coverage performance ------------------------------
-print(df_coverage)
 
 
 ## Plot coverage deciles for rw in 2016 -------------------

@@ -15,10 +15,15 @@ df_point <-
 
 df_ribbon <-
   df_real_withfit %>% 
-  dplyr::filter(variable %in% c("biomass_rw_hi95", 
-                                "biomass_rw_lo95")) %>%
+  dplyr::filter(variable %in% c("biomass_rw_se", "biomass_rw")) %>%
   dplyr::select(variable, year, value) %>%
-  tidyr::spread(variable, value)
+  tidyr::spread(variable, value) %>%
+  dplyr::mutate(biomass_rw_lo95 = (log(biomass_rw) - 
+                                    1.96 * log(biomass_rw_se)) %>%
+                                    exp,
+                biomass_rw_hi95 = (log(biomass_rw) + 
+                                     1.96 * log(biomass_rw_se)) %>%
+                                     exp)
 
 ggplot(data = df_line, aes(x = year)) +
   geom_line(aes(y = value, color = variable)) +

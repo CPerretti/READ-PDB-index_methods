@@ -1,6 +1,6 @@
 source("5-fit_models.R")
 
-## Calculate error of each method -------------------------
+## Calculate error of each method in scenario years -------
 
 df_errors <-
   df_sims_withfit %>%
@@ -37,97 +37,25 @@ df_errors <-
                                 "Three-year mean",
                                 "Terminal year"))
 
+  
+## Percent reduction in error going from Average to RW ----
+df_perc_reduct <-
+  df_errors %>%
+  dplyr::filter(method %in% c("Average surveys", "Random walk"),
+                smooth == "Terminal year") %>%
+  dplyr::select(scenario, driver, method, mae) %>%
+  tidyr::spread(method, mae) %>%
+  dplyr::mutate(perc_reduct = 100*(`Average surveys` - `Random walk`)/`Average surveys`)
 
-## Calculate coverage probability of random walk model for 2016 ----
-df_coverage <-
-  df_sims_withfit %>%
-  dplyr::filter(variable %in% c("biomass_tru",
-                                "biomass_rw",
-                                "biomass_rw_hi95",
-                                "biomass_rw_lo95",
-                                "biomass_rw_hi90",
-                                "biomass_rw_lo90",
-                                "biomass_rw_hi75",
-                                "biomass_rw_lo75"),
-                year > (terminal_year - n_scenario)) %>%
-  tidyr::spread(variable, value) %>%
-  dplyr::mutate(within_ci95 = ifelse(biomass_tru < biomass_rw_hi95 &
-                                      biomass_tru > biomass_rw_lo95,
-                                     1,
-                                     0),
-                within_ci90 = ifelse(biomass_tru < biomass_rw_hi90 &
-                                       biomass_tru > biomass_rw_lo90,
-                                     1,
-                                     0),
-                within_ci75 = ifelse(biomass_tru < biomass_rw_hi75 &
-                                       biomass_tru > biomass_rw_lo75,
-                                     1,
-                                     0)) %>%
-  dplyr::summarise(coverage_ci95 = sum(within_ci95)/
-                                        length(within_ci95) * 100,
-                   coverage_ci90 = sum(within_ci90)/
-                                        length(within_ci90) * 100,
-                   coverage_ci75 = sum(within_ci75)/
-                                         length(within_ci75) * 100) %>%
-  dplyr::group_by(driver, scenario) %>%
-  dplyr::summarise(coverage_ci95_mean = mean(coverage_ci95),
-                   coverage_ci90_mean = mean(coverage_ci90),
-                   coverage_ci75_mean = mean(coverage_ci75),
-                   coverage_ci95_ci = 1.96 * sd(coverage_ci95) /
-                                          length(coverage_ci95)^0.5,
-                   coverage_ci90_ci = 1.96 * sd(coverage_ci90) /
-                                          length(coverage_ci90)^0.5,
-                   coverage_ci75_ci = 1.96 * sd(coverage_ci75) /
-                                          length(coverage_ci75)^0.5)
-  
-  
-## Calculate coverage decile of random walk model for 2016 ----
+## Coverage performance of rw model in scenario years ----
 df_coverage_decile <-
   df_sims_withfit %>%
   dplyr::filter(variable %in% c("biomass_tru",
                                 "biomass_rw",
-                                "biomass_rw_hi95"),
+                                "biomass_rw_se"),
                 year > (terminal_year - n_scenario)) %>%
   tidyr::spread(variable, value) %>%
-  dplyr::mutate(se = (log(biomass_rw_hi95) - log(biomass_rw)) / 1.96,
-                decile = floor(10 * pnorm(q    = log(biomass_tru), 
+  dplyr::mutate(decile = floor(10 * pnorm(q    = log(biomass_tru), 
                                           mean = log(biomass_rw), 
-                                          sd   = se)))
+                                          sd   = log(biomass_rw_se))))
 
-## Calculate the mean error in 2016 (not mean absolute error) ------
-# This is to check for the direction of error
-
-df_meanerr <-
-  df_sims_withfit %>%
-  dplyr::group_by(rep, driver, scenario) %>%
-  dplyr::filter(variable %in% c("biomass_rw", 
-                                "biomass_rw_3ymean",
-                                "biomass_average",
-                                "biomass_average_3ymean",
-                                "biomass_tru"),
-                year > (terminal_year - n_scenario)) %>%
-  # Rename variables for plots
-  dplyr::mutate(variable = ifelse(variable == "biomass_rw",
-                                  "biomass_rw_terminal",
-                                  variable),
-                variable = ifelse(variable == "biomass_average",
-                                  "biomass_average_terminal",
-                                  variable)) %>%
-  tidyr::spread(variable, value) %>%
-  tidyr::gather(variable, value, 
-                -rep, -driver, -scenario, 
-                -year, -biomass_tru) %>%
-  dplyr::mutate(err = value - biomass_tru) %>%
-  dplyr::group_by(driver, scenario, variable) %>%
-  dplyr::summarise(me = mean(err)) %>%
-  tidyr::separate(variable, into = c("variable_fit", 
-                                     "method", 
-                                     "smooth")) %>%
-  dplyr::mutate(method = ifelse(method == "average",
-                                "Average surveys",
-                                "Random walk"),
-                smooth = ifelse(smooth == "3ymean",
-                                "Three-year mean",
-                                "Terminal year"))
-
- 

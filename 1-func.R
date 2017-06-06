@@ -217,64 +217,78 @@ fit_models <- function(...,
                log_biomass_survey1, 
                log_biomass_survey2, 
                log_biomass_survey3)
+
   
-  # Set up data and parameters
-  dat <- 
-    list(log_obs_DFO    = df2fit$log_biomass_survey1,
-         log_obs_spring = df2fit$log_biomass_survey2,
-         log_obs_fall   = df2fit$log_biomass_survey3)
+  # Fit model once for each year in the scenario
+  biomass_rw_all <- data.frame()
   
-  # Initialize parameters
-  parameters <- 
-    list(logB = rep(0, length(dat$log_obs_DFO)),
-         log_process_error    = 0,
-         log_obs_error_DFO    = 0,
-         log_obs_error_spring = 0,
-         log_obs_error_fall   = 0)
-  
-  # Fit model
-  obj <- MakeADFun(dat,
-                   parameters,
-                   DLL = "yt_rw",
-                   random = c("logB"),
-                   silent = TRUE)
-  
-  opt <- nlminb(obj$par, obj$fn, obj$gr,
-                control = list(iter.max = 1000,
-                               eval.max = 1000))
-  
-  srep <- summary(sdreport(obj))
-  
-  
-  # Extract parameter estimates from TMB output
-  ests <- return_ests(srep = srep)
+  for (i in 1:(n_scenario)) {
+    # Setup data
+    ind <- 1:(nrow(df2fit) - n_scenario + i)
+
+    dat <- 
+      list(log_obs_DFO    = df2fit$log_biomass_survey1[ind],
+           log_obs_spring = df2fit$log_biomass_survey2[ind],
+           log_obs_fall   = df2fit$log_biomass_survey3[ind])
+    
+    # Initialize parameters
+    parameters <- 
+      list(logB = rep(0, length(dat$log_obs_DFO)),
+           log_process_error    = 0,
+           log_obs_error_DFO    = 0,
+           log_obs_error_spring = 0,
+           log_obs_error_fall   = 0)
+    
+    obj <- MakeADFun(dat,
+                     parameters,
+                     DLL = "yt_rw",
+                     random = c("logB"),
+                     silent = TRUE)
+    
+    opt <- nlminb(obj$par, obj$fn, obj$gr,
+                  control = list(iter.max = 1000,
+                                 eval.max = 1000))
+    
+    srep <- summary(sdreport(obj))
+    
+    
+    # Extract parameter estimates from TMB output
+    ests <- return_ests(srep = srep)
+    
+    biomass_rw_all <-
+      dplyr::bind_rows(biomass_rw_all,
+          data.frame(year = unique(df2fit$year[ind]),
+                     model = paste0("biomass_rw_term",
+                                    df2fit$year[ind] %>% max),
+                     fit = ests$est.log.pop[,"Estimate"] %>% exp,
+                     se = ests$est.log.pop[,"Std. Error"] %>% exp)) %>%
+      dplyr::mutate(model = as.character(model))
+      
+  }
   
   # Organize fit
+  biomass_rw <-
+    biomass_rw_all %>%
+    dplyr::select(-se) %>%
+    tidyr::spread(model, fit, fill = NA)
+  biomass_rw_se <-
+    biomass_rw_all %>%
+    dplyr::select(-fit) %>%
+    dplyr::mutate(model = paste0(model, "_se")) %>%
+    tidyr::spread(model, se, fill = NA)
+  
+  
   df_fit  <-
+    biomass_rw %>%
+    dplyr::left_join(by = "year",
+                     biomass_rw_se) %>%
+    dplyr::left_join(by = "year",
     data.frame(year = df2fit$year %>% unique,
-               `biomass_rw` = ests$est.log.pop[,"Estimate"] %>% exp,
-               `biomass_rw_hi95` = (ests$est.log.pop[,"Estimate"] +
-                                   1.96*ests$est.log.pop[,"Std. Error"]) %>%
-                 exp,
-               `biomass_rw_lo95` = (ests$est.log.pop[,"Estimate"] -
-                                   1.96*ests$est.log.pop[,"Std. Error"]) %>%
-                 exp,
-               `biomass_rw_hi90` = (ests$est.log.pop[,"Estimate"] +
-                                      1.645*ests$est.log.pop[,"Std. Error"]) %>%
-                 exp,
-               `biomass_rw_lo90` = (ests$est.log.pop[,"Estimate"] -
-                                      1.645*ests$est.log.pop[,"Std. Error"]) %>%
-                 exp,
-               `biomass_rw_hi75` = (ests$est.log.pop[,"Estimate"] +
-                                      1.15*ests$est.log.pop[,"Std. Error"]) %>%
-                 exp,
-               `biomass_rw_lo75` = (ests$est.log.pop[,"Estimate"] -
-                                      1.15*ests$est.log.pop[,"Std. Error"]) %>%
-                 exp,
                biomass_average = 
                  rowMeans(cbind(df2fit$log_biomass_survey1 %>% exp, 
                                 df2fit$log_biomass_survey2 %>% exp, 
                                 df2fit$log_biomass_survey3 %>% exp)),
                
                check.names = F)
+    )
 }

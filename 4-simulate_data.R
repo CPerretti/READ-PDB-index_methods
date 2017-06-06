@@ -2,7 +2,7 @@ source("3-clean.R")
 # Simulate data
 
 n_rep <- 1000
-n_scenario <- 5 #Years in scenario (used again in plots)
+n_scenario <- 5 # years in scenario 
 terminal_year <- max(df_rfssb$Year) + n_scenario
 df_sims <-
   base::expand.grid(rep = 1:n_rep,
