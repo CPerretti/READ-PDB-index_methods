@@ -162,3 +162,52 @@ ggplot(df_fitvsobs,
   facet_grid(method~driver*scenario, scales = "free") +
   xlab("True state in terminal year") +
   ylab("Estimated state in terminal year")
+
+#---------------------------------------------------------------------
+# calculate Mohn's rho for random walk estimates
+
+# collect biomass estiamtes from random walk
+mr <- dplyr::filter(df_sims_withfit, variable %in% c("biomass_rw_term2014",
+                                                     "biomass_rw_term2015",
+                                                     "biomass_rw_term2016",
+                                                     "biomass_rw_term2017",
+                                                     "biomass_rw_term2018"),
+                    year >= 2014) %>%
+  group_by(rep,driver,scenario)
+
+# get the tip and terminal assessment values for each year, rep, driver, and scenario
+# I'm sure there are better ways to do this!
+# note the years are hardwired for these calculations - should be generalized
+for (iyear in 2014:2017){
+  temp1 <- mr %>%
+    dplyr::filter(variable == paste0("biomass_rw_term",iyear),
+                  year == iyear) %>%
+    dplyr::mutate(tip = value) %>%
+    dplyr::select(-c(variable, value))
+  
+  temp2 <- mr %>%
+    dplyr::filter(variable == "biomass_rw_term2018",
+                  year == iyear) %>%
+    dplyr::mutate(term = value) %>%
+    dplyr::select(-c(variable, value))
+  
+  temp3 <- dplyr::inner_join(temp1, temp2) %>%
+    dplyr::mutate(rho = (tip - term) / term)
+  
+  if (iyear == 2014){
+    df_rho <- temp3
+  }
+  if (iyear >= 2015){
+    df_rho <- rbind(df_rho, temp3)
+  }
+}
+
+# calculate Mohn's rho using the four peels
+df_mr <- df_rho %>%
+  dplyr::group_by(rep, driver, scenario) %>%
+  dplyr::summarize(mohn_rho = mean(rho))
+
+# make a somewhat pretty plot - I'm sure this can be improved as well
+# bottom line is not much retrospective, but in the direction we discussed earlier
+ggplot(df_mr, aes(x=scenario, y=mohn_rho, fill=driver)) +
+  geom_violin() 
