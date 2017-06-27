@@ -50,24 +50,12 @@ run_sim <- function(n_ages,
                        ncol = n_ages,
                        dimnames = list(NULL, 
                                        paste0("age", 1:n_ages)))
-    C      <- matrix(data = NA, # Catch-at-age
-                     nrow = n_t,
-                     ncol = n_ages,
-                     dimnames = list(NULL, 
-                                     paste0("age", 1:n_ages)))
-    SSB    <- matrix(data = NA, # Spawning stock biomass
-                     nrow = n_t,
-                     ncol = 1)
     
     # Model parameters:
     w_a    <- c(0.148, 0.317, 0.453, 0.588, 0.724, 
                 rep(0.921, times = n_ages - 5)) # Weights
-    mat_a  <- c(0, 0.462, 0.967, # Maturity
-                 rep(1, times = n_ages - 3)) 
     m      <- 0.4 # Natural mortality
-    phi    <- 0.4167 # Fraction of year before spawning
     
-    ssb_ind <- 2:n_ages        # Ages that spawn
     sdR     <- 0.1             # Recruitment variability
     sdO     <- 0.2             # Observation error
     
@@ -129,7 +117,6 @@ run_sim <- function(n_ages,
     for(t in 1:(n_t - 1)){
       Z_a <- f[t]*fsel_a + m
       # Spawning occurs before fishing
-      SSB[t]  <- sum(abund_tru[t,] * w_a * mat_a * exp(-Z_a * phi))
       abund_tru[t+1,1] <- rlnorm(n = 1,       # Realized recruitment.
                                  m = log(r[t]) - 0.5 * sdR^2,
                                  s = sdR)
@@ -137,7 +124,6 @@ run_sim <- function(n_ages,
       abund_tru[t+1,-1] <- exp(-Z_a[-n_ages]) * abund_tru[t,-n_ages] # Transition
       # Plus group
       abund_tru[t+1,n_ages] <- abund_tru[t+1,n_ages] + exp(-Z_a[n_ages]) * abund_tru[t,n_ages]
-      C[t,]   <- abund_tru[t,] * exp(-m) * (1 - exp(-f[t] * fsel_a)) * w_a # Catch (biomass).
     }
     
     # Simulate multiple surveys with different selectivities,
@@ -291,4 +277,92 @@ fit_models <- function(...,
                
                check.names = F)
     )
+}
+
+## Plot time series with model fits -----------------------
+plot_fit <- function(df_sims, 
+                     rep2p, 
+                     scen2p, 
+                     driver2p, 
+                     df_sims_withfit,
+                     titl,
+                     filename) {
+  
+  outlier_year <- 
+    df_sims %>%
+    dplyr::filter(rep == rep2p,
+                  scenario == scen2p,
+                  driver == driver2p) %$%
+    outlier_year %>%
+    unique
+  
+  # Choose replicate to plot
+  df_sims_withfit2p <-
+    df_sims_withfit %>%
+    dplyr::filter(rep == rep2p,
+                  driver == driver2p,
+                  scenario == scen2p)
+  
+  df_line <-
+    df_sims_withfit2p %>% 
+    dplyr::filter(variable %in% c("Empirical fit",
+                                  "State-space fit",
+                                  "True"))
+  
+  df_point <-
+    df_sims_withfit2p %>% 
+    dplyr::filter(variable %in% c("Survey 1",
+                                  "Survey 2",
+                                  "Survey 3"))
+  
+  df_ribbon <-
+    df_sims_withfit2p %>% 
+    dplyr::filter(variable %in% c("State-space fit", 
+                                  "biomass_rw_se")) %>%
+    dplyr::select(variable, year, value) %>%
+    tidyr::spread(variable, value) %>%
+    dplyr::mutate(biomass_rw_lo95 = (log(`State-space fit`) - 
+                                       1.96 * log(biomass_rw_se)) %>%
+                    exp,
+                  biomass_rw_hi95 = (log(`State-space fit`) + 
+                                       1.96 * log(biomass_rw_se)) %>%
+                    exp)
+  
+  df_outlier <- 
+    df_sims_withfit2p %>%
+    dplyr::filter(variable %in% c("Survey 1",
+                                  "Survey 2",
+                                  "Survey 3")) %>%
+    dplyr::filter(year == outlier_year) 
+  
+p <-
+  ggplot(df_sims_withfit2p, aes(x = year)) +
+    geom_point(data   = df_outlier, 
+               colour = "black", 
+               shape  = 1, 
+               size   = 5,
+               aes(y = value)) +
+    geom_line(data = df_line,
+              aes(y = value, color = variable)) +
+    geom_point(data = df_point,
+               aes(y = value, shape = variable)) +
+    scale_color_manual(values = c("red",
+                                  "blue", 
+                                  "black")) +
+    geom_ribbon(data = df_ribbon,
+                aes(x = year, 
+                    ymin = biomass_rw_lo95, 
+                    ymax = biomass_rw_hi95),
+                alpha = 0.3,
+                fill = "blue",
+                size = 0.1) +
+    geom_vline(xintercept = max(df_sims_withfit2p$year) - n_scenario) +
+    xlab("Year") +
+    ylab("Biomass (1000 mt)") +
+    theme(legend.title = element_blank()) + 
+    ggtitle(titl)
+  
+  print(p)
+  
+  ggsave(filename, width = 5.5, height = 3.5)
 }

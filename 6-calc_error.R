@@ -38,7 +38,8 @@ df_errors <-
                                 "Terminal year"))
 
   
-## Percent reduction in error going from Average to RW ----
+## Percent reduction in error from Average to RW ----
+# Terminal year only
 df_perc_reduct <-
   df_errors %>%
   dplyr::filter(method %in% c("Average surveys", "Random walk"),
@@ -46,6 +47,24 @@ df_perc_reduct <-
   dplyr::select(scenario, driver, method, mae) %>%
   tidyr::spread(method, mae) %>%
   dplyr::mutate(perc_reduct = 100*(`Average surveys` - `Random walk`)/`Average surveys`)
+
+## Three-year mean vs terminal year
+df_perc_reduct_3yrvsterm_average <-
+  df_errors %>%
+  dplyr::filter(method %in% c("Average surveys")) %>%
+  dplyr::select(scenario, driver, method, smooth, mae) %>%
+  tidyr::spread(smooth, mae) %>%
+  dplyr::mutate(perc_reduct = 100*(`Three-year mean` - `Terminal year`)/
+                  `Three-year mean`)
+
+df_perc_reduct_3yrvsterm_ss <-
+  df_errors %>%
+  dplyr::filter(method %in% c("Random walk")) %>%
+  dplyr::select(scenario, driver, method, smooth, mae) %>%
+  tidyr::spread(smooth, mae) %>%
+  dplyr::mutate(perc_reduct = 100*(`Three-year mean` - `Terminal year`)/
+                  `Three-year mean`)
+
 
 ## Coverage performance of rw model in scenario years ----
 df_coverage_decile <-
