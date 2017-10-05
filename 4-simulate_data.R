@@ -1,15 +1,22 @@
 source("3-clean.R")
 # Simulate data
+set.seed(1234)
 
 n_rep <- 1000
-n_scenario <- 5 # years in scenario 
+
+n_scenario <- 5
 terminal_year <- max(df_rfssb$Year) + n_scenario
 df_sims <-
   base::expand.grid(rep = 1:n_rep,
-                    driver = c("f", "r"),
-                    scenario = c("no change", 
-                                 "increasing biomass", 
-                                 "decreasing biomass")) %>%
+                    driver = c("f", 
+                               "r"
+                               ),
+                    scenario = c("no change",
+                                 "increasing slowly",
+                                 "increasing rapidly",
+                                 "decreasing slowly",
+                                 "decreasing rapidly"
+                                 )) %>%
   dplyr::group_by(rep, driver, scenario) %>%
   dplyr::do(
     run_sim(n_ages        = 10,

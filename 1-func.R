@@ -1,4 +1,5 @@
 # Load custom functions
+
 library(magrittr) # for pipe operators (e.g., %>%)
 library(ggplot2)
 
@@ -52,12 +53,12 @@ run_sim <- function(n_ages,
                                        paste0("age", 1:n_ages)))
     
     # Model parameters:
-    w_a    <- c(0.148, 0.317, 0.453, 0.588, 0.724, 
-                rep(0.921, times = n_ages - 5)) # Weights
-    m      <- 0.4 # Natural mortality
+    w_a   <- c(0.148, 0.317, 0.453, 0.588, 0.724, 
+              rep(0.921, times = n_ages - 5)) # Weights
+    m     <- 0.4 # Natural mortality
     
-    sdR     <- 0.1             # Recruitment variability
-    sdO     <- 0.2             # Observation error
+    sdR   <- 0.1             # Recruitment variability
+    sdO   <- 0.2             # Observation error
     
     
     # Setup R time series
@@ -66,19 +67,34 @@ run_sim <- function(n_ages,
     
     # Set R for scenario years
     if (driver == "r"){
-      if (scenario == "increasing biomass") {
+      if (scenario == "increasing slowly") {
         # increase by r x% per year
         r[(length(r)-n_scenario + 1):length(r)] <-
           r[(length(r)-n_scenario + 1):length(r)] *
-          1.5^(1:n_scenario)
-      } else if (scenario == "decreasing biomass") {
+          seq(from = 1.39, to = 1.39, length.out = n_scenario)
+      } else if (scenario == "increasing rapidly") {
+        # increase by r x% per year
+        r[(length(r)-n_scenario + 1):length(r)] <-
+          r[(length(r)-n_scenario + 1):length(r)] *
+          seq(from = 1.7, to = 1.7, length.out = n_scenario)
+      } else if (scenario == "decreasing slowly") {
         # decrease by r x% per year
         r[(length(r)-n_scenario + 1):length(r)] <-
           r[(length(r)-n_scenario + 1):length(r)] *
-          0.5^(1:n_scenario)
+          seq(from = 0.8, to = 0.8, length.out = n_scenario)
+      } else if (scenario == "decreasing rapidly") {
+        # decrease by r x% per year
+        r[(length(r)-n_scenario + 1):length(r)] <-
+          r[(length(r)-n_scenario + 1):length(r)] *
+          seq(from = 0.5, to = 0.5, length.out = n_scenario)
       } else if (scenario == "no change") {
-        r <- r
-      } else stop("scenario must be 'increasing biomass', 'decreasing biomass', or 'no change'")
+        r[(length(r)-n_scenario + 1):length(r)] <-
+          r[(length(r)-n_scenario + 1):length(r)] *
+          seq(from = 1.1, to = 1.1, length.out = n_scenario)
+      } else stop("scenario must be 'increasing rapidly', 
+                  'increasing slowly', 'decreasing rapidly', 
+                  'decreasing slowly', 'decreasing biomass', 
+                  or 'no change'")
     }
     
     
@@ -88,20 +104,35 @@ run_sim <- function(n_ages,
     f <- c(f0, rep(df_f$Fmax[nrow(df_f)], times = n_scenario))
     
     # Set F for scenario years
-    if (driver == "f") {
-      if (scenario == "increasing biomass") {
-        # decrease f by x% per year
+    if (driver == "f"){
+      if (scenario == "increasing slowly") {
+        # increase by f x% per year
         f[(length(f)-n_scenario + 1):length(f)] <-
           f[(length(f)-n_scenario + 1):length(f)] *
-          0.5^(1:n_scenario)
-      } else if (scenario == "decreasing biomass"){
-        # increase f by x% per year
+          seq(from = 0.25, to = 0.25, length.out = n_scenario)
+      } else if (scenario == "increasing rapidly") {
+        # increase by f x% per year
         f[(length(f)-n_scenario + 1):length(f)] <-
           f[(length(f)-n_scenario + 1):length(f)] *
-          1.5^(1:n_scenario)
+          seq(from = 0.0, to = 0.0, length.out = n_scenario)
+      } else if (scenario == "decreasing slowly") {
+        # decrease by f x% per year
+        f[(length(f)-n_scenario + 1):length(f)] <-
+          f[(length(f)-n_scenario + 1):length(f)] *
+          seq(from = 2.15, to = 2.15, length.out = n_scenario)
+      } else if (scenario == "decreasing rapidly") {
+        # decrease by f x% per year
+        f[(length(f)-n_scenario + 1):length(f)] <-
+          f[(length(f)-n_scenario + 1):length(f)] *
+          seq(from = 11.9, to = 11.9, length.out = n_scenario)
       } else if (scenario == "no change") {
-        f <- f
-      } else stop("scenario must be 'increasing', 'decreasing', or 'no change'")
+        f[(length(f)-n_scenario + 1):length(f)] <-
+          f[(length(f)-n_scenario + 1):length(f)] *
+          seq(from = 0.72, to = 0.72, length.out = n_scenario)
+      } else stop("scenario must be 'increasing rapidly', 
+                  'increasing slowly', 'decreasing rapidly', 
+                  'decreasing slowly', 'decreasing biomass', 
+                  or 'no change'")
     }
 
     fsel_a  <- c(0.01, 0.2, 0.6, # Fishing selectivity
@@ -186,7 +217,7 @@ run_sim <- function(n_ages,
                  abund_obs = abund_obs)
     
     if (return_burn == FALSE) {
-      df2return %<>% dplyr::filter(year >= (terminal_year - n_sim + 1)) 
+      df2return %<>% dplyr::filter(year >= (terminal_year - n_sim - n_scenario + 1)) 
     }
     
     return(df2return)
@@ -197,7 +228,8 @@ fit_models <- function(...,
                        year,
                        log_biomass_survey1, 
                        log_biomass_survey2, 
-                       log_biomass_survey3) {
+                       log_biomass_survey3,
+                       biomass_tru) {
   df2fit <- 
     data.frame(year,
                log_biomass_survey1, 
@@ -215,7 +247,8 @@ fit_models <- function(...,
     dat <- 
       list(log_obs_DFO    = df2fit$log_biomass_survey1[ind],
            log_obs_spring = df2fit$log_biomass_survey2[ind],
-           log_obs_fall   = df2fit$log_biomass_survey3[ind])
+           log_obs_fall   = df2fit$log_biomass_survey3[ind]
+           )
     
     # Initialize parameters
     parameters <- 
@@ -225,35 +258,72 @@ fit_models <- function(...,
            log_obs_error_spring = 0,
            log_obs_error_fall   = 0)
     
-    obj <- MakeADFun(dat,
-                     parameters,
-                     DLL = "yt_rw",
-                     random = c("logB"),
-                     silent = TRUE)
+    obj1 <- MakeADFun(dat[1],
+                      parameters[1:3],
+                      DLL = "yt_rw_1surv",
+                      random = c("logB"),
+                      silent = TRUE)
     
-    opt <- nlminb(obj$par, obj$fn, obj$gr,
+    obj2 <- MakeADFun(dat[1:2],
+                      parameters[1:4],
+                      DLL = "yt_rw_2surv",
+                      random = c("logB"),
+                      silent = TRUE)
+    
+    obj3 <- MakeADFun(dat,
+                      parameters,
+                      DLL = "yt_rw_3surv",
+                      random = c("logB"),
+                      silent = TRUE)
+    
+    opt1 <- nlminb(obj1$par, obj1$fn, obj1$gr,
+                   control = list(iter.max = 1000,
+                                  eval.max = 1000))
+    
+    opt2 <- nlminb(obj2$par, obj2$fn, obj2$gr,
+                   control = list(iter.max = 1000,
+                                  eval.max = 1000))
+    
+    opt3 <- nlminb(obj3$par, obj3$fn, obj3$gr,
                   control = list(iter.max = 1000,
                                  eval.max = 1000))
     
-    srep <- summary(sdreport(obj))
+    srep1 <- summary(sdreport(obj1))
+    
+    srep2 <- summary(sdreport(obj2))
+    
+    srep3 <- summary(sdreport(obj3))
     
     
     # Extract parameter estimates from TMB output
-    ests <- return_ests(srep = srep)
+    ests1 <- return_ests(srep = srep1)
+    
+    ests2 <- return_ests(srep = srep2)
+    
+    ests3 <- return_ests(srep = srep3)
     
     biomass_rw_all <-
       dplyr::bind_rows(biomass_rw_all,
-          data.frame(year = unique(df2fit$year[ind]),
-                     model = paste0("biomass_rw_term",
-                                    df2fit$year[ind] %>% max),
-                     fit = ests$est.log.pop[,"Estimate"] %>% exp,
-                     se = ests$est.log.pop[,"Std. Error"] %>% exp)) %>%
+          data.frame(year = rep(unique(df2fit$year[ind]), times = 3),
+                     model = rep(c(paste0("biomass_rw_1surv_term",
+                                          df2fit$year[ind] %>% max),
+                                   paste0("biomass_rw_2surv_term",
+                                          df2fit$year[ind] %>% max),
+                                   paste0("biomass_rw_3surv_term",
+                                    df2fit$year[ind] %>% max)),
+                                 each = length(ind)),
+                     fit = c(ests1$est.log.pop[,"Estimate"] %>% exp,
+                             ests2$est.log.pop[,"Estimate"] %>% exp,
+                             ests3$est.log.pop[,"Estimate"] %>% exp),
+                     se = c(ests1$est.log.pop[,"Std. Error"] %>% exp,
+                            ests2$est.log.pop[,"Std. Error"] %>% exp,
+                            ests3$est.log.pop[,"Std. Error"] %>% exp))) %>%
       dplyr::mutate(model = as.character(model))
       
   }
   
   # Organize fit
-  biomass_rw <-
+  biomass_rw_term <-
     biomass_rw_all %>%
     dplyr::select(-se) %>%
     tidyr::spread(model, fit, fill = NA)
@@ -265,18 +335,28 @@ fit_models <- function(...,
   
   
   df_fit  <-
-    biomass_rw %>%
+    biomass_rw_term %>%
     dplyr::left_join(by = "year",
                      biomass_rw_se) %>%
     dplyr::left_join(by = "year",
     data.frame(year = df2fit$year %>% unique,
-               biomass_average = 
+               biomass_average_1surv_term = 
+                 rowMeans(cbind(df2fit$log_biomass_survey1 %>% exp#, 
+                                #df2fit$log_biomass_survey2 %>% exp, 
+                                #df2fit$log_biomass_survey3 %>% exp
+                 )),
+               biomass_average_2surv_term = 
+                 rowMeans(cbind(df2fit$log_biomass_survey1 %>% exp, 
+                                df2fit$log_biomass_survey2 %>% exp#, 
+                                #df2fit$log_biomass_survey3 %>% exp
+                 )),
+               biomass_average_3surv_term = 
                  rowMeans(cbind(df2fit$log_biomass_survey1 %>% exp, 
                                 df2fit$log_biomass_survey2 %>% exp, 
-                                df2fit$log_biomass_survey3 %>% exp)),
-               
-               check.names = F)
-    )
+                                df2fit$log_biomass_survey3 %>% exp
+                                )),
+               biomass_tru = biomass_tru,
+               check.names = F))
 }
 
 ## Plot time series with model fits -----------------------
@@ -364,5 +444,5 @@ p <-
   
   print(p)
   
-  ggsave(filename, width = 5.5, height = 3.5)
+  ggsave(filename, width = 6.5, height = 4.5)
 }

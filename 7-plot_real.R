@@ -7,7 +7,7 @@ df_real_withfit1 <-
   dplyr::mutate(variable = ifelse(variable == "Average",
                                   "Empirical fit",
                                   variable),
-                variable = ifelse(variable == "biomass_rw",
+                variable = ifelse(variable == "biomass_rw_3surv_term",
                                   "State-space fit",
                                   variable))
 
@@ -24,14 +24,15 @@ df_point <-
 
 df_ribbon <-
   df_real_withfit1 %>% 
-  dplyr::filter(variable %in% c("biomass_rw_se", "State-space fit")) %>%
+  dplyr::filter(variable %in% c("biomass_rw_3surv_term_se", 
+                                "State-space fit")) %>%
   dplyr::select(variable, year, value) %>%
   tidyr::spread(variable, value) %>%
-  dplyr::mutate(biomass_rw_lo95 = (log(`State-space fit`) - 
-                                    1.96 * log(biomass_rw_se)) %>%
+  dplyr::mutate(biomass_rw_3surv_term_lo95 = (log(`State-space fit`) - 
+                                    1.96 * log(biomass_rw_3surv_term_se)) %>%
                                     exp,
-                biomass_rw_hi95 = (log(`State-space fit`) + 
-                                     1.96 * log(biomass_rw_se)) %>%
+                biomass_rw_3surv_term_hi95 = (log(`State-space fit`) + 
+                                     1.96 * log(biomass_rw_3surv_term_se)) %>%
                                      exp)
 
 p <-
@@ -43,19 +44,19 @@ p <-
                                 "blue")) +
   geom_ribbon(data = df_ribbon,
               aes(x = year, 
-                  ymin = biomass_rw_lo95, 
-                  ymax = biomass_rw_hi95),
+                  ymin = biomass_rw_3surv_term_lo95, 
+                  ymax = biomass_rw_3surv_term_hi95),
               alpha = 0.3,
               fill = "blue",
               size = 0.1) +
   theme(legend.title = element_blank()) +
   ylab("Biomass (1000 mt)") +
   xlab("Year") +
-  ggtitle("GBYT survey time series")
+  ggtitle("Georges Bank yellowtail survey time series")
 
 print(p)
 
-ggsave("fig_ts_real.pdf", width = 5.5, height = 3.5)
+ggsave("fig_ts_real.pdf", width = 6.5, height = 4.5)
 
 
 
