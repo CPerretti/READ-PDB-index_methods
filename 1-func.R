@@ -1,6 +1,6 @@
 # Load custom functions
 
-library(magrittr) # for pipe operators (e.g., %>%)
+library(magrittr)
 library(ggplot2)
 
 ## Adjust ggplot function ---------------------------------
@@ -57,8 +57,8 @@ run_sim <- function(n_ages,
               rep(0.921, times = n_ages - 5)) # Weights
     m     <- 0.4 # Natural mortality
     
-    sdR   <- 0.1             # Recruitment variability
-    sdO   <- 0.2             # Observation error
+    sdR   <- 0.3            # Recruitment variability
+    sdO   <- 0.3            # Observation error
     
     
     # Setup R time series
@@ -416,16 +416,18 @@ plot_fit <- function(df_sims,
     dplyr::filter(year == outlier_year) 
   
 p <-
-  ggplot(df_sims_withfit2p, aes(x = year)) +
+   ggplot() +
     geom_point(data   = df_outlier, 
                colour = "black", 
                shape  = 1, 
                size   = 5,
-               aes(y = value)) +
+               aes(x = year, y = value)) +
     geom_line(data = df_line,
-              aes(y = value, color = variable)) +
+              aes(x = year, 
+                  y = value, color = variable, group = variable)) +
     geom_point(data = df_point,
-               aes(y = value, shape = variable)) +
+               aes(x = year,
+                   y = value, shape = variable, group = variable)) +
     scale_color_manual(values = c("red",
                                   "blue", 
                                   "black")) +

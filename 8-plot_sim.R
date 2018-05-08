@@ -32,7 +32,7 @@ df_sims_withfit1 <-
 
 # 1. No change
 plot_fit(df_sims = df_sims,
-         rep2p = 1,
+         rep2p = 123,
          driver2p = "r",
          scen2p = "no change",
          df_sims_withfit = df_sims_withfit1,
@@ -41,7 +41,7 @@ plot_fit(df_sims = df_sims,
 
 # 2. Increasing by recruitment slowly
 plot_fit(df_sims = df_sims,
-         rep2p = 1,
+         rep2p = 123,
          driver2p = "r",
          scen2p = "increasing slowly",
          df_sims_withfit = df_sims_withfit1,
@@ -50,7 +50,7 @@ plot_fit(df_sims = df_sims,
 
 # 3. Increasing by recruitment rapidly
 plot_fit(df_sims = df_sims,
-         rep2p = 1,
+         rep2p = 123,
          driver2p = "r",
          scen2p = "increasing rapidly",
          df_sims_withfit = df_sims_withfit1,
@@ -59,7 +59,7 @@ plot_fit(df_sims = df_sims,
 
 # 4. Decreasing by recruitment slowly
 plot_fit(df_sims = df_sims,
-         rep2p = 1,
+         rep2p = 123,
          driver2p = "f",
          scen2p = "decreasing slowly",
          df_sims_withfit = df_sims_withfit1,
@@ -68,7 +68,7 @@ plot_fit(df_sims = df_sims,
 
 # 5. Decreasing by recruitment rapidly
 plot_fit(df_sims = df_sims,
-         rep2p = 1,
+         rep2p = 123,
          driver2p = "r",
          scen2p = "decreasing rapidly",
          df_sims_withfit = df_sims_withfit1,
@@ -77,7 +77,7 @@ plot_fit(df_sims = df_sims,
 
 # 6. Increasing by fishing slowly
 plot_fit(df_sims = df_sims,
-         rep2p = 1,
+         rep2p = 123,
          driver2p = "f",
          scen2p = "increasing slowly",
          df_sims_withfit = df_sims_withfit1,
@@ -86,7 +86,7 @@ plot_fit(df_sims = df_sims,
 
 # 7. Increasing by fishing rapidly
 plot_fit(df_sims = df_sims,
-         rep2p = 1,
+         rep2p = 123,
          driver2p = "f",
          scen2p = "increasing rapidly",
          df_sims_withfit = df_sims_withfit1,
@@ -95,7 +95,7 @@ plot_fit(df_sims = df_sims,
 
 # 8. Decreasing by fishing slowly
 plot_fit(df_sims = df_sims,
-         rep2p = 1,
+         rep2p = 123,
          driver2p = "f",
          scen2p = "decreasing slowly",
          df_sims_withfit = df_sims_withfit1,
@@ -104,7 +104,7 @@ plot_fit(df_sims = df_sims,
 
 # 9. Decreasing by fishing rapidly
 plot_fit(df_sims = df_sims,
-         rep2p = 1,
+         rep2p = 123,
          driver2p = "f",
          scen2p = "decreasing rapidly",
          df_sims_withfit = df_sims_withfit1,
@@ -115,9 +115,16 @@ plot_fit(df_sims = df_sims,
 ## Plot a blow up the last 10 years with mean trajectories
 df2plot <-
   df_sims %>%
-  dplyr::filter(year >= max(year) - n_scenario*2 + 1) %>%
+  dplyr::filter(year >= max(year) - n_scenario + 1) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(driver, scenario, year, 
+                biomass_obs.survey1, biomass_obs.survey2, 
+                biomass_obs.survey3) %>%
+  tidyr::gather(variable, biomass_obs, -year, -scenario, -driver) %>%
   dplyr::group_by(driver, scenario, year) %>%
-  dplyr::summarise(mean_tru = mean(biomass_tru)) %>%
+  dplyr::summarise(median_obs = median(biomass_obs),
+                   simint_high = quantile(biomass_obs, probs = .95),
+                   simint_low  = quantile(biomass_obs, probs = .05)) %>%
   dplyr::ungroup() %>%
   dplyr::mutate(driver = as.character(driver),
                 scenario = as.character(scenario),
@@ -141,50 +148,78 @@ df2plot <-
                                   scenario),
                 scenario = ifelse(scenario == "decreasing slowly",
                                   "Decreasing slowly",
-                                  scenario)) %>%
+                                  scenario),
+                scenario = factor(scenario, 
+                                  levels = c("Decreasing rapidly",
+                                             "Decreasing slowly",
+                                             "No change",
+                                             "Increasing slowly",
+                                             "Increasing rapidly"))) %>%
   dplyr::rename(Scenario = scenario,
                 Driver = driver)
 
 p_scenarios <-
   ggplot(df2plot, aes(x = year, 
-                    y = mean_tru, 
-                    color = Scenario,
-                    linetype = Driver)) +
+                    y = median_obs)) +
   geom_line() +
+  geom_ribbon(aes(ymin = simint_low,
+                  ymax = simint_high), alpha = 0.3) +
   ylim(0, NA) +
   xlab("Year") +
-  ylab("Biomass (1000 mt)")
+  ylab("Biomass (1000 mt)") +
+  facet_grid(Driver ~ Scenario) +
+  theme(axis.text = element_text(size = 7))
 
 p_scenarios
 
-ggsave("fig_scenarios.pdf", width = 7, height = 4.5)
+
+ggsave("fig_scenarios.pdf", width = 9, height = 5)
   
 
-## Plot simulated age structure ---------------------------
-# p_age <-
-#   ggplot(df_sims_withfit2p %>%
-#            dplyr::filter(variable %in% c("abund_obs.age1.survey1",
-#                                          "abund_obs.age1.survey2",
-#                                          "abund_obs.age5.survey1",
-#                                          "abund_obs.age5.survey2",
-#                                          "abund_obs.age9.survey1",
-#                                          "abund_obs.age9.survey2")),
-#          aes(x = year, y = value, color = variable)) +
-#     geom_line() +
-#     geom_point(size = 0.3) +
-#     geom_vline(xintercept = df_sims_withfit2p %>% 
-#                  dplyr::filter(variable == "outlier_year") %$%
-#                  value %>% unique) +
-#     xlab("Year") +
-#     ylab("Abundance") +
-#     theme(legend.title = element_blank())
+## Plot simulated age structure in first year---------------------
+df2plot <- 
+  df_sims %>%
+  dplyr::filter(year == 1973) %>%
+  tidyr::gather(variable, value, 
+                -year, -rep, -driver, -scenario) %>%
+  dplyr::filter(variable %in% c("abund_tru.age1",
+                                "abund_tru.age2",
+                                "abund_tru.age3",
+                                "abund_tru.age4",
+                                "abund_tru.age5",
+                                "abund_tru.age6",
+                                "abund_tru.age7",
+                                "abund_tru.age8",
+                                "abund_tru.age9",
+                                "abund_tru.age10")) %>%
+  dplyr::group_by(variable) %>%
+  dplyr::summarise(mean_abund = mean(value)) %>%
+  dplyr::mutate(age = substr(variable, start = 14, 15) %>%
+                  as.numeric)
+p_age <- 
+  ggplot(df2plot,
+         aes(x = age, y = mean_abund)) +
+    geom_line() +
+    geom_point(size = 0.3) +
+    xlab("Age") +
+    ylab("Abundance") +
+    theme(legend.title = element_blank())
 
-#p_age
+p_age
+
+# Calculate % diff between VPA and simulated for 1973
+df2plot <-
+  df2plot %>%
+  dplyr::arrange(age) %>%
+  dplyr::mutate(mean_abund_tho = mean_abund/1000)
+df2plot$mean_abund_tho[6] <- sum(df2plot$mean_abund_tho[6:10])
+(df2plot$mean_abund_tho[1:6]  - c(46684, 34147, 37735, 21482, 8650, 3741)) / 
+  df2plot$mean_abund_tho[1:6]
 
 ## Plot error comparison ----------------------------------
 p_err <-
   ggplot(df_errors %>% dplyr::filter(`number of surveys` == "3surv"), 
-         aes(x = method, y = mae, fill = smooth)) + 
+         aes(x = method, y = mae, fill = smooth, group = smooth)) + 
   geom_bar(position = position_dodge(), stat = "identity") +
   geom_errorbar(aes(ymin = mae - mae_ci, ymax = mae + mae_ci),
                 width = .2,                 
@@ -196,7 +231,7 @@ p_err <-
 
 p_err
 
-ggsave("fig_err.pdf", width = 10, height = 4.5)
+ggsave("fig_err_mae.pdf", width = 10, height = 6.5)
 
 
 ## Plot coverage deciles for rw in 2016 -------------------
@@ -225,7 +260,13 @@ df_coverage_decile1 <-
                                   scenario),
                 scenario = ifelse(scenario == "decreasing slowly",
                                   "Decreasing slowly",
-                                  scenario))
+                                  scenario),
+                scenario = factor(scenario, 
+                                  levels = c("Decreasing rapidly",
+                                             "Decreasing slowly",
+                                             "No change",
+                                             "Increasing slowly",
+                                             "Increasing rapidly")))
 
 
 p_decile <-
@@ -341,7 +382,13 @@ df_mr <-
                                   scenario),
                 scenario = ifelse(scenario == "decreasing slowly",
                                   "Decreasing slowly",
-                                  scenario))
+                                  scenario),
+                scenario = factor(scenario, 
+                                  levels = c("Decreasing rapidly",
+                                             "Decreasing slowly",
+                                             "No change",
+                                             "Increasing slowly",
+                                             "Increasing rapidly")))
 
 # make a somewhat pretty plot - I'm sure this can be improved as well
 # bottom line is not much retrospective, but in the direction we discussed earlier
@@ -361,32 +408,71 @@ df_mr_mean <-
 
 
 ## Plot error vs three year change in biomass (all reps combined)-----
-ggplot(df_error_by_rep %>% dplyr::filter(`number of surveys` == "3surv",
-                                         rep < 500), 
-       aes(x = biomass_3ypc, y = abs_err, color = paste(method, smooth))) +
-  geom_smooth(method = "loess") +
+df2plot <-
+  df_error_by_rep %>%
+  dplyr::mutate(round_3ypc = round(biomass_3ypc, -1)) %>%
+  dplyr::group_by(method, 
+                  smooth, 
+                  `number of surveys`,
+                  round_3ypc) %>%
+  dplyr::mutate(count = n()) %>%
+  dplyr::filter(count > 30) %>%
+  dplyr::summarise(mean_ae = mean(abs_err),
+                   se_ae   = sd(abs_err)/sqrt(n()),
+                   se_high = mean_ae + se_ae,
+                   se_low  = mean_ae - se_ae) %>%
+  dplyr::filter(`number of surveys` == "3surv")
+
+ggplot(df2plot, 
+       aes(x = round_3ypc, y = mean_ae, 
+           color = paste(method, smooth))) +
+  geom_line() +
+  geom_ribbon(aes(ymin = se_low, 
+                  ymax = se_high,
+                  fill = paste(method, smooth)),
+              alpha = 0.3,
+              size = 0.1) +
   xlab("Three year change in biomass (%)") +
   ylab("Absolute error") +
-  theme(legend.title = element_blank())
+  theme(legend.title = element_blank()) 
 
 ggsave("fig_changeVSerror_allruns.pdf", width = 8.5, height = 5.5)
 
 ## Plot difference in error for term vs 3yr against % change -----
 df2plot <-
   df_error_by_rep %>%
+  dplyr::mutate(round_3ypc = round(biomass_3ypc, -1)) %>%
   dplyr::filter(`number of surveys` == "3surv") %>%
-  dplyr::select(-value) %>%
+  dplyr::select(-value, -biomass_3ypc, -biomass_tru) %>%
   tidyr::spread(smooth, abs_err) %>%
-  dplyr::mutate(abs_err_diff = `Three-year mean` - `Terminal year`)
+  dplyr::mutate(abs_err_diff = `Smoothed estimate` - `Unsmoothed estimate`) %>%
+  dplyr::group_by(method, 
+                  scenario,
+                  driver,
+                  `number of surveys`,
+                  round_3ypc) %>%
+  dplyr::mutate(count = n()) %>%
+  dplyr::filter(count > 30) %>%
+  dplyr::summarise(mean_ae_diff = mean(abs_err_diff),
+                   se_ae_diff = sd(abs_err_diff)/sqrt(n()),
+                   se_high = mean_ae_diff + se_ae_diff,
+                   se_low  = mean_ae_diff - se_ae_diff,
+                   prop    = n()/(n_rep*n_scenario))
 
 ggplot(df2plot, 
-       aes(x = biomass_3ypc, y = abs_err_diff, color = method)) +
-  geom_smooth(method = "loess") +
-  facet_grid(driver~scenario) +
+       aes(x = round_3ypc, y = mean_ae_diff)) +
+  geom_line(aes(color = method)) +
+  #geom_line(aes(y = prop, color = prop), size = 3) +
+  geom_ribbon(aes(ymin = se_low, 
+                  ymax = se_high,
+                  fill = method),
+              alpha = 0.6,
+              size = 0.1) +
+  facet_grid(driver~scenario, scales = "free") +
   geom_hline(yintercept = 0, size = 0.3) +
   theme(legend.title = element_blank()) +
   xlab("Three year change in biomass (%)") +
-  ylab("Three-year-mean error - Terminal year error")
+  ylab("Smoothed estimate error - Unsmoothed estimate error")
 
 ggsave("fig_changeVSerror_byscenario.pdf", width = 8.5, height = 5.5)
 
@@ -395,7 +481,7 @@ df2plot <-
   df_error_by_rep %>%
   dplyr::select(-value) %>%
   tidyr::spread(smooth, abs_err) %>%
-  dplyr::mutate(abs_err_diff = `Three-year mean` - `Terminal year`) %>%
+  dplyr::mutate(abs_err_diff = `Smoothed estimate` - `Unsmoothed estimate`) %>%
   dplyr::group_by(driver, scenario, method, `number of surveys`) %>%
   dplyr::summarise(ae_diff_mean = mean(abs_err_diff),
                    ae_diff_se = sd(abs_err_diff)/length(abs_err_diff)^0.5,
@@ -418,10 +504,63 @@ ggplot(df2plot,
                 width = .2,                 
                 position = position_dodge(.9)) +
   facet_grid(driver~scenario) +
-  ylab("Three-year-mean error - Terminal year error") +
+  ylab("Smoothed estimate error - Unsmoothed estimate error") +
   xlab("Number of surveys") +
   guides(fill = guide_legend(title = NULL))
 
 
 ggsave("fig_numsurveyVSerror.pdf", width = 8.5, height = 5.5)
+
+
+## Make tables of MAE and RMSE for each method
+# MAE Table
+
+df_errors %>% 
+  dplyr::filter(`number of surveys` == "3surv") %>%
+  dplyr::ungroup() %>%
+  dplyr::select(scenario, driver, method, smooth, mae) %>%
+  dplyr::mutate(method_smooth = paste(method, smooth)) %>%
+  dplyr::select(scenario, driver, method_smooth, mae) %>%
+  tidyr::spread(method_smooth, mae) %>%
+  dplyr::select(scenario, driver,
+                `Empirical Smoothed estimate`, `State-space Smoothed estimate`,
+                `Empirical Unsmoothed estimate`, `State-space Unsmoothed estimate`)
+
+# Comparison of smooth error vs model error
+
+# model error
+df_errors %>% 
+  dplyr::ungroup() %>%
+  dplyr::select(scenario, driver, method, smooth, mae) %>%
+  dplyr::group_by(method) %>%
+  dplyr::summarise(mean_mae = mean(mae)) %>%
+  tidyr::spread(method, mean_mae) %>%
+  dplyr::mutate(pc_diff = (Empirical - `State-space`)/Empirical)
+  
+  
+#smooth error
+df_errors %>%
+  dplyr::filter(`number of surveys` == "3surv") %>%
+  dplyr::filter(method == "State-space") %>%
+  dplyr::ungroup() %>%
+  dplyr::select(scenario, driver, method, smooth, mae) %>%
+  dplyr::group_by(scenario, driver, smooth) %>%
+  dplyr::summarise(mean_mae = mean(mae)) %>%
+  tidyr::spread(smooth, mean_mae) %>%
+  dplyr::mutate(pc_diff = (`Smoothed estimate` - `Unsmoothed estimate`)/`Smoothed estimate`)
+
+
+# PC diff between smooths within models
+df_errors %>%
+  dplyr::filter(`number of surveys` == "3surv") %>%
+  #dplyr::filter(method == "State-space") %>%
+  dplyr::filter(method == "Empirical") %>%
+  dplyr::ungroup() %>%
+  dplyr::select(scenario, driver, method, smooth, mae) %>%
+  dplyr::group_by(scenario, driver, method, smooth) %>%
+  dplyr::summarise(mae = mean(mae)) %>%
+  tidyr::spread(smooth, mae) %>%
+  dplyr::mutate(pc_diff = (`Smoothed estimate` - `Unsmoothed estimate`)/`Smoothed estimate`)
+
+
 

@@ -23,7 +23,9 @@ df_error_by_rep <-
   tidyr::gather(variable, value, 
                 -rep, -driver, -scenario, 
                 -year, -biomass_tru, -biomass_3ypc) %>%
-  dplyr::mutate(abs_err = abs(value - biomass_tru)) %>%
+  dplyr::mutate(abs_err = abs(value - biomass_tru)
+                #abs_err = (value - biomass_tru)^2
+                ) %>%
   tidyr::separate(variable, into = c("variable_fit", 
                                      "method",
                                      "number of surveys",
@@ -32,8 +34,8 @@ df_error_by_rep <-
                                 "Empirical",
                                 "State-space"),
                 smooth = ifelse(smooth == "3ymean",
-                                "Three-year mean",
-                                "Terminal year")) %>%
+                                "Smoothed estimate",
+                                "Unsmoothed estimate")) %>%
   dplyr::ungroup() %>%
   dplyr::mutate(driver = as.character(driver),
                 scenario = as.character(scenario),
@@ -57,12 +59,18 @@ df_error_by_rep <-
                                   scenario),
                 scenario = ifelse(scenario == "decreasing slowly",
                                   "Decreasing slowly",
-                                  scenario))
+                                  scenario),
+                scenario = factor(scenario, 
+                                  levels = c("Decreasing rapidly",
+                                             "Decreasing slowly",
+                                             "No change",
+                                             "Increasing slowly",
+                                             "Increasing rapidly")))
 
 df_errors <-
   df_error_by_rep %>%
   dplyr::group_by(driver, scenario, method, `number of surveys`, smooth) %>%
-  dplyr::summarise(mae = mean(abs_err),
+  dplyr::summarise(mae = mean(abs_err^2)^0.5,
                    mae_se = sd(abs_err)/length(abs_err)^0.5,
                    mae_ci = 1.96 * mae_se,
                    mean_3ypc = mean(biomass_3ypc))
@@ -75,8 +83,8 @@ pcbetter_termVSmean <-
   dplyr::select(-mae_se, -mae_ci) %>%
   tidyr::spread(smooth, mae) %>%
   dplyr::ungroup() %>%
-  dplyr::summarise(pcbetter_term = mean(100*(`Three-year mean` - `Terminal year`)/
-                                          `Three-year mean`))
+  dplyr::summarise(pcbetter_term = mean(100*(`Smoothed estimate` - `Unsmoothed estimate`)/
+                                          `Smoothed estimate`))
 
 pcbetter_emptermVSempmean <-
   df_errors %>%
@@ -85,8 +93,8 @@ pcbetter_emptermVSempmean <-
   dplyr::select(-mae_se, -mae_ci) %>%
   tidyr::spread(smooth, mae) %>%
   dplyr::ungroup() %>%
-  dplyr::summarise(pcbetter_term = mean(100*(`Three-year mean` - `Terminal year`)/
-                                          `Three-year mean`))
+  dplyr::summarise(pcbetter_term = mean(100*(`Smoothed estimate` - `Unsmoothed estimate`)/
+                                          `Smoothed estimate`))
 
 pcbetter_sstermVSssmean <-
   df_errors %>%
@@ -95,13 +103,13 @@ pcbetter_sstermVSssmean <-
   dplyr::select(-mae_se, -mae_ci) %>%
   tidyr::spread(smooth, mae) %>%
   dplyr::ungroup() %>%
-  dplyr::summarise(pcbetter_term = mean(100*(`Three-year mean` - `Terminal year`)/
-                                          `Three-year mean`))
+  dplyr::summarise(pcbetter_term = mean(100*(`Smoothed estimate` - `Unsmoothed estimate`)/
+                                          `Smoothed estimate`))
 
 pcbetter_sstermVSempterm <-
   df_errors %>%
   dplyr::filter(`number of surveys` == "3surv") %>%
-  dplyr::filter(smooth == "Terminal year") %>%
+  dplyr::filter(smooth == "Unsmoothed estimate") %>%
   dplyr::select(-mae_se, -mae_ci) %>%
   tidyr::spread(method, mae) %>%
   dplyr::ungroup() %>%
@@ -110,7 +118,7 @@ pcbetter_sstermVSempterm <-
 pcbetter_ssmeanVSempmean <-
   df_errors %>%
   dplyr::filter(`number of surveys` == "3surv") %>%
-  dplyr::filter(smooth == "Three-year mean") %>%
+  dplyr::filter(smooth == "Smoothed estimate") %>%
   dplyr::select(-mae_se, -mae_ci) %>%
   tidyr::spread(method, mae) %>%
   dplyr::ungroup() %>%
@@ -124,8 +132,8 @@ pcbetter_sstermVSssmean_byscenario <-
   dplyr::select(-mae_se, -mae_ci) %>%
   tidyr::spread(smooth, mae) %>%
   dplyr::group_by(driver, scenario) %>%
-  dplyr::summarise(pcbetter_term = mean(100*(`Three-year mean` - `Terminal year`)/
-                                          `Three-year mean`))
+  dplyr::summarise(pcbetter_term = mean(100*(`Smoothed estimate` - `Unsmoothed estimate`)/
+                                          `Smoothed estimate`))
 pcbetter_emptermVSempmean_byscenario <-
   df_errors %>%
   dplyr::filter(`number of surveys` == "3surv") %>%
@@ -133,13 +141,13 @@ pcbetter_emptermVSempmean_byscenario <-
   dplyr::select(-mae_se, -mae_ci) %>%
   tidyr::spread(smooth, mae) %>%
   dplyr::group_by(driver, scenario) %>%
-  dplyr::summarise(pcbetter_term = mean(100*(`Three-year mean` - `Terminal year`)/
-                                          `Three-year mean`))
+  dplyr::summarise(pcbetter_term = mean(100*(`Smoothed estimate` - `Unsmoothed estimate`)/
+                                          `Smoothed estimate`))
 # # Terminal year only
 # df_perc_reduct <-
 #   df_errors %>%
 #   dplyr::filter(method %in% c("Average surveys", "Random walk"),
-#                 smooth == "Terminal year") %>%
+#                 smooth == "Unsmoothed estimate") %>%
 #   dplyr::select(scenario, driver, method, mae) %>%
 #   tidyr::spread(method, mae) %>%
 #   dplyr::mutate(perc_reduct = 100*(`Average surveys` - `Random walk`)/`Average surveys`)
@@ -150,16 +158,16 @@ pcbetter_emptermVSempmean_byscenario <-
 #   dplyr::filter(method %in% c("Average surveys")) %>%
 #   dplyr::select(scenario, driver, method, smooth, mae) %>%
 #   tidyr::spread(smooth, mae) %>%
-#   dplyr::mutate(perc_reduct = 100*(`Three-year mean` - `Terminal year`)/
-#                   `Three-year mean`)
+#   dplyr::mutate(perc_reduct = 100*(`Smoothed estimate` - `Unsmoothed estimate`)/
+#                                   `Smoothed estimate`)
 # 
 # df_perc_reduct_3yrvsterm_ss <-
 #   df_errors %>%
 #   dplyr::filter(method %in% c("Random walk")) %>%
 #   dplyr::select(scenario, driver, method, smooth, mae) %>%
 #   tidyr::spread(smooth, mae) %>%
-#   dplyr::mutate(perc_reduct = 100*(`Three-year mean` - `Terminal year`)/
-#                   `Three-year mean`)
+#   dplyr::mutate(perc_reduct = 100*(`Smoothed estimate` - `Unsmoothed estimate`)/
+#                                   `Smoothed estimate`)
 
 
 ## Coverage performance of rw model in scenario years ----
