@@ -1,4 +1,4 @@
-# index_methods
+# Code for index methods publication
 
 Code and data for
 
